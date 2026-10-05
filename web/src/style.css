@@ -137,7 +137,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
   padding: 0 8px;
   border: 0;
   color: #fff;
-  background: #130714 url("/assets/menu/menu-button.png") center / 100% 100% no-repeat;
+  background: transparent url("/assets/menu/menu-button.png") center / 100% 100% no-repeat;
   font-family: Miramonte, "Trebuchet MS", Arial, sans-serif;
   text-align: center;
   font-size: 24px;

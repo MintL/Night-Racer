@@ -12,6 +12,9 @@ export interface VehicleState {
   readonly speed: number;
   readonly steeringAngle: number;
   readonly wheelSpin: number;
+  /** Body attitude about its local right and forward axes, respectively. */
+  readonly pitch: number;
+  readonly roll: number;
 }
 
 export function createVehicleState(position: VehiclePosition, yaw = 0): VehicleState {
@@ -21,6 +24,8 @@ export function createVehicleState(position: VehiclePosition, yaw = 0): VehicleS
     speed: 0,
     steeringAngle: 0,
     wheelSpin: 0,
+    pitch: 0,
+    roll: 0,
   };
 }
 

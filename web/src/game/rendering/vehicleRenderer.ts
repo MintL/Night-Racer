@@ -132,8 +132,10 @@ export class VehicleRenderer {
     const z = THREE.MathUtils.lerp(previous.position.z, current.position.z, alpha);
     const yawDifference = Math.atan2(Math.sin(current.yaw - previous.yaw), Math.cos(current.yaw - previous.yaw));
     const yaw = previous.yaw + yawDifference * alpha;
+    const pitch = THREE.MathUtils.lerp(previous.pitch, current.pitch, alpha);
+    const roll = THREE.MathUtils.lerp(previous.roll, current.roll, alpha);
     this.group.position.set(x, y, z);
-    this.group.rotation.set(0, yaw, 0);
+    this.group.rotation.set(pitch, yaw, roll, 'YXZ');
 
     const wheelSpin = THREE.MathUtils.lerp(previous.wheelSpin, current.wheelSpin, alpha);
     const steering = THREE.MathUtils.lerp(previous.steeringAngle, current.steeringAngle, alpha);

@@ -112,6 +112,8 @@ export function stepVehicle(
     speed,
     steeringAngle,
     wheelSpin,
+    pitch: state.pitch,
+    roll: state.roll,
   };
 }
 

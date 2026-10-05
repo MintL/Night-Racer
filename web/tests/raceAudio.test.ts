@@ -99,26 +99,34 @@ describe('race audio lifecycle', () => {
 
     const audio = new RaceAudioController({ assetBaseUrl: '/', masterVolume: 0.5 });
     audio.update({ speed: 40, steeringAngle: 0.05 }, 0.7);
+    audio.setRainEnabled(true);
     expect(MockAudioContext.instances).toHaveLength(0);
     expect(audio.isRunning).toBe(false);
 
     await audio.start();
     const context = MockAudioContext.instances[0];
-    expect(fetchAudio).toHaveBeenCalledTimes(3);
-    expect(context.sources).toHaveLength(2);
+    expect(fetchAudio).toHaveBeenCalledTimes(5);
+    expect(context.sources).toHaveLength(4);
     expect(context.sources.every((source) => source.loop && source.started)).toBe(true);
     expect(context.sources[0].playbackRate.value).toBeGreaterThan(1);
     expect(context.gains[2].gain.value).toBeGreaterThan(0);
+    expect(context.gains[3].gain.value).toBeGreaterThan(0);
+    expect(context.gains[4].gain.value).toBeGreaterThan(0);
     expect(audio.isRunning).toBe(true);
 
+    audio.setRainEnabled(false);
+    expect(context.gains[4].gain.value).toBe(0);
+    audio.setRainEnabled(true);
+    expect(context.gains[4].gain.value).toBeGreaterThan(0);
+
     audio.playCheckpoint();
-    expect(context.sources).toHaveLength(3);
-    expect(context.sources[2].started).toBe(true);
+    expect(context.sources).toHaveLength(5);
+    expect(context.sources[4].started).toBe(true);
     await audio.pause();
     expect(audio.isRunning).toBe(false);
     await audio.resume();
     expect(audio.isRunning).toBe(true);
-    expect(context.sources).toHaveLength(3);
+    expect(context.sources).toHaveLength(5);
 
     audio.setMasterVolume(0.2);
     expect(context.gains[0].gain.value).toBe(0.2);

@@ -261,6 +261,7 @@ export class RallyGame {
 
   private changeRain(rain: boolean): void {
     this.rainEnabled = rain;
+    this.audio.setRainEnabled(rain);
     if (!this.world || !this.worldGroup) return;
     if (this.weather) {
       this.worldGroup.remove(this.weather.group);

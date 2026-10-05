@@ -11,6 +11,8 @@ interface AudioBuffers {
   readonly engine: AudioBuffer;
   readonly skid: AudioBuffer;
   readonly checkpoint: AudioBuffer;
+  readonly forest: AudioBuffer;
+  readonly rain: AudioBuffer;
 }
 
 interface LoopPlayback {
@@ -23,6 +25,8 @@ const AUDIO_MIX = {
   drivingEngineVolume: 0.23,
   maximumSkidVolume: 0.11,
   checkpointVolume: 0.24,
+  forestVolume: 0.15,
+  rainVolume: 0.14,
   idleEngineRate: 0.72,
   engineRateRange: 0.95,
   skidSteeringReference: 0.07,
@@ -39,6 +43,8 @@ export class RaceAudioController {
   private buffers: AudioBuffers | null = null;
   private engine: LoopPlayback | null = null;
   private skid: LoopPlayback | null = null;
+  private forest: LoopPlayback | null = null;
+  private rain: LoopPlayback | null = null;
   private checkpointSources = new Set<AudioBufferSourceNode>();
   private loadingAbort: AbortController | null = null;
   private startPromise: Promise<void> | null = null;
@@ -46,6 +52,7 @@ export class RaceAudioController {
   private speed = 0;
   private steeringAngle = 0;
   private roadWeight = 1;
+  private rainEnabled = false;
 
   constructor(options: RaceAudioOptions = {}) {
     this.assetBaseUrl = options.assetBaseUrl ?? import.meta.env.BASE_URL;
@@ -77,6 +84,8 @@ export class RaceAudioController {
         if (this.disposed || !this.buffers || !this.masterGain) return;
         if (!this.engine) this.engine = this.createLoop(context, this.buffers.engine, this.masterGain);
         if (!this.skid) this.skid = this.createLoop(context, this.buffers.skid, this.masterGain);
+        if (!this.forest) this.forest = this.createLoop(context, this.buffers.forest, this.masterGain);
+        if (!this.rain) this.rain = this.createLoop(context, this.buffers.rain, this.masterGain);
         this.applyMix();
       } catch (error) {
         if (!this.disposed) throw error;
@@ -114,6 +123,11 @@ export class RaceAudioController {
     );
   }
 
+  setRainEnabled(enabled: boolean): void {
+    this.rainEnabled = enabled;
+    this.applyMix();
+  }
+
   playCheckpoint(): void {
     if (this.disposed || !this.context || !this.masterGain || !this.buffers) return;
     if (this.context.state !== 'running') return;
@@ -139,6 +153,8 @@ export class RaceAudioController {
     this.loadingAbort?.abort();
     this.stopLoop(this.engine);
     this.stopLoop(this.skid);
+    this.stopLoop(this.forest);
+    this.stopLoop(this.rain);
     for (const source of this.checkpointSources) {
       source.stop();
       source.disconnect();
@@ -148,6 +164,8 @@ export class RaceAudioController {
     if (this.context) void this.context.close().catch(() => undefined);
     this.engine = null;
     this.skid = null;
+    this.forest = null;
+    this.rain = null;
     this.masterGain = null;
     this.context = null;
   }
@@ -162,12 +180,14 @@ export class RaceAudioController {
     };
 
     try {
-      const [engine, skid, checkpoint] = await Promise.all([
+      const [engine, skid, checkpoint, forest, rain] = await Promise.all([
         load('engine-loop.wav'),
         load('tire-skid-loop.wav'),
         load('checkpoint.wav'),
+        load('forestambient1.wav'),
+        load('softrain1.wav'),
       ]);
-      return { engine, skid, checkpoint };
+      return { engine, skid, checkpoint, forest, rain };
     } finally {
       this.loadingAbort = null;
     }
@@ -186,7 +206,7 @@ export class RaceAudioController {
   }
 
   private applyMix(): void {
-    if (!this.context || !this.engine || !this.skid) return;
+    if (!this.context || !this.engine || !this.skid || !this.forest || !this.rain) return;
     const now = this.context.currentTime;
     const speedRatio = clamp(Math.abs(this.speed) / ORIGINAL_HANDLING.maxSpeed, 0, 1);
     const scrub = clamp(
@@ -208,6 +228,16 @@ export class RaceAudioController {
     );
     this.skid.gain.gain.setTargetAtTime(
       skidVolume,
+      now,
+      AUDIO_MIX.gainResponseSeconds,
+    );
+    this.forest.gain.gain.setTargetAtTime(
+      AUDIO_MIX.forestVolume,
+      now,
+      AUDIO_MIX.gainResponseSeconds,
+    );
+    this.rain.gain.gain.setTargetAtTime(
+      this.rainEnabled ? AUDIO_MIX.rainVolume : 0,
       now,
       AUDIO_MIX.gainResponseSeconds,
     );

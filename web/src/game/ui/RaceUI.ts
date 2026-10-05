@@ -1,6 +1,7 @@
 import type { RaceState } from '../race/raceState';
 import { raceElapsedSeconds } from '../race/raceState';
 import type { WorldSeed } from '../../core/random/seededRandom';
+import { LEGACY_WORLD_SCALE, ORIGINAL_HANDLING, VEHICLE_STEP_SECONDS } from '../vehicle/vehicleController';
 
 export type GraphicsQuality = 'low' | 'medium' | 'high';
 
@@ -20,6 +21,10 @@ export interface HudState {
   speedKmh: number;
   seed: WorldSeed;
 }
+
+// HUDComponent.cs rotates the original needle through 240 degrees at MaxSpeed.
+const MAX_NEEDLE_ANGLE = 240;
+const MAX_GAUGE_SPEED_KMH = ORIGINAL_HANDLING.maxSpeed * LEGACY_WORLD_SCALE / VEHICLE_STEP_SECONDS * 3.6;
 
 function randomSeed(): string {
   return String(crypto.getRandomValues(new Uint32Array(1))[0]);
@@ -58,12 +63,16 @@ export class RaceUI {
       <div class="vignette" aria-hidden="true"></div>
       <div class="race-hud" hidden>
         <div class="hud-top">
-          <div class="hud-card lap-card"><span class="eyebrow">Lap</span><strong id="lap-value">01 / 03</strong></div>
           <div class="hud-card timer-card"><span class="eyebrow">Race time</span><strong id="time-value">00:00.00</strong></div>
+          <div class="hud-card lap-card"><span class="eyebrow">Lap</span><strong id="lap-value">01 / 03</strong></div>
         </div>
         <div class="hud-bottom">
-          <div class="track-readout"><span class="eyebrow">Next gate</span><strong id="gate-value">01 / 06</strong><span id="seed-value"></span></div>
-          <div class="speed-readout"><strong id="speed-value">000</strong><span>KM/H</span></div>
+          <div class="speedometer" aria-label="Speed in kilometres per hour">
+            <img class="speedometer-face" src="/assets/hud/speedometer2.png" alt="" />
+            <img class="speedometer-needle" id="speedometer-needle" src="/assets/hud/speedometer-needle.png" alt="" />
+            <strong id="speed-value">000</strong>
+          </div>
+          <div class="track-readout"><span class="eyebrow">Next checkpoint</span><strong id="gate-value">01 / 06</strong><span id="seed-value"></span></div>
         </div>
       </div>
       <div class="countdown" aria-live="polite"></div>
@@ -129,19 +138,18 @@ export class RaceUI {
     this.panel.hidden = false;
     this.panel.innerHTML = `
       <main class="menu-screen">
+        <img class="legacy-logo" src="/assets/menu/menu-title.png" alt="Night Racer" />
         <div class="menu-content">
-          <div class="brand-mark"><span class="brand-dash"></span> DATX / 02</div>
-          <p class="overline">A procedural rally experience</p>
-          <h1>NIGHT<br><em>RACER.</em></h1>
-          <p class="menu-description">One seed. One winding road. Three laps through the dusk.</p>
+          <h1>Main Menu</h1>
+          <p class="menu-description">Three laps through a generated night rally course.</p>
           <label class="seed-label" for="world-seed">Course seed</label>
           <div class="seed-control">
             <input id="world-seed" type="text" maxlength="48" value="${escapeHtml(String(seed))}" autocomplete="off" spellcheck="false" />
             <button class="icon-button" data-action="random" title="Random seed" aria-label="Random seed">↻</button>
           </div>
-          <button class="primary-button" data-action="play">START RACE <span>↗</span></button>
+          <button class="primary-button" data-action="play">START RACE <span>›</span></button>
           <details class="settings">
-            <summary>Settings & controls</summary>
+            <summary>Options & controls</summary>
             <div class="settings-grid">
               <label>Graphics <select id="graphics-quality">
                 <option value="low" ${this.quality === 'low' ? 'selected' : ''}>Low</option>
@@ -151,7 +159,7 @@ export class RaceUI {
               <label>Volume <input id="master-volume" type="range" min="0" max="100" value="${Math.round(this.volume * 100)}" /></label>
               <label>Rain <input id="rain-enabled" type="checkbox" ${this.rain ? 'checked' : ''} /></label>
             </div>
-            <button class="text-button" data-action="fullscreen">Toggle fullscreen ↗</button>
+            <button class="text-button" data-action="fullscreen">Toggle fullscreen</button>
           </details>
         </div>
         <div class="menu-aside"><span>WASD / ARROWS · DRIVE</span><span>R · RESET</span><span>Q / E · CAMERA</span><span>ESC · PAUSE</span><span>GAMEPAD SUPPORTED</span></div>
@@ -209,6 +217,8 @@ export class RaceUI {
     this.hud.querySelector('#time-value')!.textContent = formatTime(raceElapsedSeconds(race));
     this.hud.querySelector('#gate-value')!.textContent = `${String(race.nextCheckpointIndex + 1).padStart(2, '0')} / ${String(race.checkpoints.length).padStart(2, '0')}`;
     this.hud.querySelector('#speed-value')!.textContent = String(Math.max(0, Math.round(Math.abs(speedKmh)))).padStart(3, '0');
+    const needleAngle = Math.min(MAX_NEEDLE_ANGLE, Math.abs(speedKmh) / MAX_GAUGE_SPEED_KMH * MAX_NEEDLE_ANGLE);
+    (this.hud.querySelector('#speedometer-needle') as HTMLImageElement).style.transform = `rotate(${needleAngle}deg)`;
     this.hud.querySelector('#seed-value')!.textContent = `SEED ${seed}`;
     this.countdown.textContent = race.phase === 'countdown'
       ? String(Math.ceil(race.countdownTicks / 60))

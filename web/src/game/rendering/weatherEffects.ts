@@ -37,6 +37,12 @@ const RAIN_VOLUME_HEIGHT = 17;
 const RAIN_RADIUS = 22;
 const FIREFLIES_PER_CLUSTER = 4;
 
+function loadParticleTexture(filename: string): THREE.Texture {
+  // Unit tests build the geometry without a browser image loader.
+  if (typeof document === 'undefined') return new THREE.Texture();
+  return new THREE.TextureLoader().load(`${import.meta.env.BASE_URL}assets/particles/${filename}`);
+}
+
 function isNearCourse(world: World, x: number, z: number): boolean {
   const maximumDistanceSquared = 32 * 32;
   for (let index = 0; index < world.track.points.length; index += 4) {
@@ -95,10 +101,12 @@ function createFireflies(locations: readonly FireflyLocation[]): THREE.Points {
   geometry.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
 
   const material = new THREE.ShaderMaterial({
-    uniforms: { uTime: { value: 0 } },
+    uniforms: {
+      uTime: { value: 0 },
+      uSprite: { value: loadParticleTexture('firefly.png') },
+    },
     transparent: true,
     depthWrite: false,
-    blending: THREE.AdditiveBlending,
     vertexShader: `
       attribute float aPhase;
       attribute float aSize;
@@ -121,15 +129,13 @@ function createFireflies(locations: readonly FireflyLocation[]): THREE.Points {
       }
     `,
     fragmentShader: `
+      uniform sampler2D uSprite;
       varying float vPulse;
       varying float vDistanceFade;
       void main() {
-        vec2 centered = gl_PointCoord * 2.0 - 1.0;
-        float radius = length(centered);
-        float glow = exp(-radius * radius * 9.0);
-        float core = 1.0 - smoothstep(0.13, 0.35, radius);
-        float alpha = (glow * 0.36 + core * 0.45) * vPulse * vDistanceFade;
-        gl_FragColor = vec4(0.93, 0.83, 0.32, alpha);
+        vec4 sprite = texture2D(uSprite, gl_PointCoord);
+        float alpha = sprite.a * vPulse * vDistanceFade;
+        gl_FragColor = vec4(sprite.rgb * vec3(0.94, 0.88, 0.25), alpha);
       }
     `,
   });
@@ -139,73 +145,69 @@ function createFireflies(locations: readonly FireflyLocation[]): THREE.Points {
   return points;
 }
 
-function createRain(world: World, count: number): THREE.LineSegments {
+function createRain(world: World, count: number): THREE.Points {
   const random = worldRandom(world.seed, 'weather:rain');
   const geometry = new THREE.BufferGeometry();
-  const positions = new Float32Array(count * 2 * 3);
-  const heights = new Float32Array(count * 2);
-  const speeds = new Float32Array(count * 2);
-  const lengths = new Float32Array(count * 2);
-  const tips = new Float32Array(count * 2);
+  const positions = new Float32Array(count * 3);
+  const heights = new Float32Array(count);
+  const speeds = new Float32Array(count);
+  const sizes = new Float32Array(count);
   for (let drop = 0; drop < count; drop += 1) {
     const x = (random.nextFloat() * 2 - 1) * RAIN_RADIUS;
     const z = (random.nextFloat() * 2 - 1) * RAIN_RADIUS;
-    const height = random.nextFloat() * RAIN_VOLUME_HEIGHT;
-    const speed = 9 + random.nextFloat() * 6;
-    const length = 0.27 + random.nextFloat() * 0.3;
-    for (let tip = 0; tip < 2; tip += 1) {
-      const index = drop * 2 + tip;
-      positions.set([x, 0, z], index * 3);
-      heights[index] = height;
-      speeds[index] = speed;
-      lengths[index] = length;
-      tips[index] = tip;
-    }
+    positions.set([x, 0, z], drop * 3);
+    heights[drop] = random.nextFloat() * RAIN_VOLUME_HEIGHT;
+    speeds[drop] = 9 + random.nextFloat() * 6;
+    sizes[drop] = 0.8 + random.nextFloat() * 0.6;
   }
   geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
   geometry.setAttribute('aHeight', new THREE.BufferAttribute(heights, 1));
   geometry.setAttribute('aSpeed', new THREE.BufferAttribute(speeds, 1));
-  geometry.setAttribute('aLength', new THREE.BufferAttribute(lengths, 1));
-  geometry.setAttribute('aTip', new THREE.BufferAttribute(tips, 1));
+  geometry.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
 
   const material = new THREE.ShaderMaterial({
     uniforms: {
       uTime: { value: 0 },
       uVolumeHeight: { value: RAIN_VOLUME_HEIGHT },
+      uSprite: { value: loadParticleTexture('rain2.png') },
     },
     transparent: true,
     depthWrite: false,
+    blending: THREE.AdditiveBlending,
     vertexShader: `
       attribute float aHeight;
       attribute float aSpeed;
-      attribute float aLength;
-      attribute float aTip;
+      attribute float aSize;
       uniform float uTime;
       uniform float uVolumeHeight;
       varying float vOpacity;
       void main() {
-        float height = mod(aHeight - uTime * aSpeed, uVolumeHeight) - aTip * aLength;
+        float height = mod(aHeight - uTime * aSpeed, uVolumeHeight);
         vec3 streak = vec3(
           position.x + height * 0.16,
           height,
           position.z + height * 0.12
         );
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(streak, 1.0);
+        vec4 viewPosition = modelViewMatrix * vec4(streak, 1.0);
+        gl_Position = projectionMatrix * viewPosition;
+        gl_PointSize = clamp(aSize * 100.0 / max(-viewPosition.z, 0.1), 3.0, 14.0);
         float horizontalDistance = length(position.xz);
-        vOpacity = 0.34 * (1.0 - smoothstep(12.0, 22.0, horizontalDistance));
+        vOpacity = 0.7 * (1.0 - smoothstep(12.0, 22.0, horizontalDistance));
       }
     `,
     fragmentShader: `
+      uniform sampler2D uSprite;
       varying float vOpacity;
       void main() {
-        gl_FragColor = vec4(0.64, 0.76, 0.91, vOpacity);
+        vec4 sprite = texture2D(uSprite, gl_PointCoord);
+        gl_FragColor = vec4(sprite.rgb * vec3(0.65, 0.6, 1.0), sprite.a * vOpacity);
       }
     `,
   });
-  const lines = new THREE.LineSegments(geometry, material);
-  lines.name = 'Light rain around the chase camera';
-  lines.frustumCulled = false;
-  return lines;
+  const points = new THREE.Points(geometry, material);
+  points.name = 'Light rain around the chase camera';
+  points.frustumCulled = false;
+  return points;
 }
 
 /** GPU-animated visual weather; the vehicle simulation remains unaffected. */
@@ -239,6 +241,10 @@ export function createWeatherEffects(world: World, options: WeatherOptions = {})
         if (!effect) continue;
         effect.geometry.dispose();
         for (const material of Array.isArray(effect.material) ? effect.material : [effect.material]) {
+          if (material instanceof THREE.ShaderMaterial) {
+            const sprite = material.uniforms.uSprite?.value;
+            if (sprite instanceof THREE.Texture) sprite.dispose();
+          }
           material.dispose();
         }
       }

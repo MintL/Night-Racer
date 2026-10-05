@@ -12,10 +12,10 @@ it('keeps seeded fireflies off-road and updates a bounded rain volume', () => {
 
   const weather = createWeatherEffects(world, { quality: 'low', rain: true });
   expect(weather.group.children.length).toBe(2);
-  const rain = weather.group.children.find((child) => child instanceof THREE.LineSegments);
-  expect(rain).toBeInstanceOf(THREE.LineSegments);
-  if (!(rain instanceof THREE.LineSegments)) throw new Error('Rain geometry was not created.');
-  expect(rain.geometry.getAttribute('position').count).toBe(600);
+  const rain = weather.group.children.find((child) => child.name === 'Light rain around the chase camera');
+  expect(rain).toBeInstanceOf(THREE.Points);
+  if (!(rain instanceof THREE.Points)) throw new Error('Rain geometry was not created.');
+  expect(rain.geometry.getAttribute('position').count).toBe(300);
 
   weather.update({ x: 10, y: 2, z: -4 }, { x: 4, y: 5, z: -8 }, 3.5);
   expect(rain.position.toArray()).toEqual([7, 0, -6]);

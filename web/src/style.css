@@ -2,6 +2,7 @@
   font-family: "Trebuchet MS", Arial, sans-serif;
   color: #f5eaf8;
   background: #09030d;
+  --menu-frame-outset: 10px;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 }
@@ -97,11 +98,11 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
   pointer-events: none;
 }
 .menu-content::before {
-  left: -18px;
+  left: calc(-1 * var(--menu-frame-outset));
   background-image: url("/assets/menu/menu-left-border.png");
 }
 .menu-content::after {
-  right: -18px;
+  right: calc(-1 * var(--menu-frame-outset));
   background-image: url("/assets/menu/menu-right-border.png");
 }
 .menu-content h1, .menu-content h2 {
@@ -349,8 +350,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
   background-size: 100% 100%;
   pointer-events: none;
 }
-.center-screen::before { left: -18px; background-image: url("/assets/menu/menu-left-border.png"); }
-.center-screen::after { right: -18px; background-image: url("/assets/menu/menu-right-border.png"); }
+.center-screen::before { left: calc(-1 * var(--menu-frame-outset)); background-image: url("/assets/menu/menu-left-border.png"); }
+.center-screen::after { right: calc(-1 * var(--menu-frame-outset)); background-image: url("/assets/menu/menu-right-border.png"); }
 .center-screen .overline { display: block; margin-bottom: 12px; color: #eca7f5; }
 .center-screen h2 { margin: 0 0 24px; font-family: Calibri, Arial, sans-serif; font-size: clamp(26px, 4vw, 36px); line-height: 1; }
 .button-stack { display: grid; justify-items: center; gap: 6px; }

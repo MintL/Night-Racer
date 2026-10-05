@@ -3,91 +3,114 @@ import type { CheckpointGate } from '../race/checkpointGates';
 import type { Terrain } from '../world/terrain/generateWorld';
 import type { Track } from '../world/track/track';
 
-const ACTIVE_COLOR = new THREE.Color('#ffc487');
-const ACTIVE_GLOW = new THREE.Color('#da6f38');
-const INACTIVE_COLOR = new THREE.Color('#729f9b');
-const INACTIVE_GLOW = new THREE.Color('#2d6b71');
+// GamePlayView.cs places nine FireObjects across each checkpoint. The middle
+// flame is 250 XNA units above the road; the outer flames form a low arch.
+const FLAMES_PER_SIDE = 4;
+const FLAME_SPACING = 1;
+const ARCH_HEIGHT = 6.5;
+const ARCH_DROP = 4;
 
 export interface CheckpointVisuals {
   readonly group: THREE.Group;
   setActive(index: number): void;
 }
 
-function makeBeam(start: THREE.Vector3, end: THREE.Vector3, material: THREE.Material): THREE.Mesh {
-  const direction = new THREE.Vector3().subVectors(end, start);
-  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, direction.length(), 7), material);
-  mesh.position.copy(start).add(end).multiplyScalar(0.5);
-  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize());
+function makeFireBillboard(
+  geometry: THREE.PlaneGeometry,
+  material: THREE.MeshBasicMaterial,
+  basePosition: THREE.Vector3,
+  width: number,
+  height: number,
+  phase: number,
+): THREE.Mesh {
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.position.copy(basePosition);
+  mesh.frustumCulled = false;
+  mesh.onBeforeRender = (_renderer, _scene, camera) => {
+    const time = performance.now() * 0.001;
+    const flicker = Math.sin(time * 8 + phase) * 0.07 + Math.sin(time * 13 + phase * 2) * 0.04;
+    mesh.position.y = basePosition.y + Math.sin(time * 2.6 + phase) * 0.13;
+    mesh.scale.set(width * (1 + flicker), height * (1 + flicker), 1);
+    mesh.quaternion.copy(camera.quaternion);
+    mesh.updateMatrixWorld();
+  };
   return mesh;
 }
 
 export function createCheckpointVisuals(gates: readonly CheckpointGate[], terrain: Terrain): CheckpointVisuals {
   const group = new THREE.Group();
-  const materials: THREE.MeshStandardMaterial[] = [];
+  const flameTexture = new THREE.TextureLoader().load('/assets/particles/smoke_2.png');
+  const smokeTexture = new THREE.TextureLoader().load('/assets/particles/smoke.png');
+  const billboardGeometry = new THREE.PlaneGeometry(1, 1);
+  const flameMaterials = ['#ff3b1f', '#ff8a24', '#ffd34f'].map((flameColor) =>
+    new THREE.MeshBasicMaterial({
+      map: flameTexture,
+      color: flameColor,
+      transparent: true,
+      opacity: 0.8,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      toneMapped: false,
+    }),
+  );
+  const smokeMaterial = new THREE.MeshBasicMaterial({
+    map: smokeTexture,
+    color: '#393e43',
+    transparent: true,
+    opacity: 0.23,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+  });
+  const lights: THREE.PointLight[] = [];
 
-  for (const gate of gates) {
-    const material = new THREE.MeshStandardMaterial({
-      color: INACTIVE_COLOR,
-      emissive: INACTIVE_GLOW,
-      emissiveIntensity: 0.45,
-      roughness: 0.35,
-      metalness: 0.4,
-    });
-    materials.push(material);
+  for (let gateIndex = 0; gateIndex < gates.length; gateIndex += 1) {
+    const gate = gates[gateIndex];
     const sideX = -gate.heading.z;
     const sideZ = gate.heading.x;
-    const endDistance = gate.halfWidth + 0.8;
-    const ends = [-1, 1].map((sign) => {
-      const x = gate.position.x + sign * sideX * endDistance;
-      const z = gate.position.z + sign * sideZ * endDistance;
-      return new THREE.Vector3(x, terrain.sampleHeight(x, z), z);
-    });
-    const topHeight = Math.max(ends[0].y, ends[1].y) + 3.1;
-    for (const end of ends) {
-      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.19, topHeight - end.y, 8), material);
-      post.position.set(end.x, (topHeight + end.y) / 2, end.z);
-      post.castShadow = true;
-      group.add(post);
+    const roadHeight = terrain.sampleHeight(gate.position.x, gate.position.z);
 
-      const foot = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.4, 0.5, 0.08, 12),
-        new THREE.MeshStandardMaterial({ color: '#273a3a', roughness: 0.7, metalness: 0.35 }),
-      );
-      foot.position.set(end.x, end.y + 0.04, end.z);
-      group.add(foot);
+    for (let offset = -FLAMES_PER_SIDE; offset <= FLAMES_PER_SIDE; offset += 1) {
+      const x = gate.position.x + sideX * offset * FLAME_SPACING;
+      const z = gate.position.z + sideZ * offset * FLAME_SPACING;
+      const y = roadHeight - ARCH_DROP + ARCH_HEIGHT * Math.cos(offset / (FLAMES_PER_SIDE + 1));
+      for (let layer = 0; layer < flameMaterials.length; layer += 1) {
+        const phase = gateIndex * 1.7 + offset * 0.81 + layer * 2.1;
+        const base = new THREE.Vector3(x, y + layer * 0.16, z);
+        group.add(makeFireBillboard(
+          billboardGeometry,
+          flameMaterials[layer],
+          base,
+          0.54 + layer * 0.08,
+          0.62 + layer * 0.12,
+          phase,
+        ));
+      }
+      const smokeBase = new THREE.Vector3(x, y + 0.48, z);
+      group.add(makeFireBillboard(
+        billboardGeometry,
+        smokeMaterial,
+        smokeBase,
+        0.7,
+        0.82,
+        gateIndex * 1.3 + offset * 0.69,
+      ));
     }
 
-    const leftTop = new THREE.Vector3(ends[0].x, topHeight, ends[0].z);
-    const rightTop = new THREE.Vector3(ends[1].x, topHeight, ends[1].z);
-    group.add(makeBeam(leftTop, rightTop, material));
-
-    const strip = new THREE.Mesh(
-      new THREE.BoxGeometry(gate.halfWidth * 2, 0.025, 0.09),
-      new THREE.MeshBasicMaterial({ color: '#e6f1db', transparent: true, opacity: 0.65 }),
-    );
-    strip.position.set(gate.position.x, terrain.sampleHeight(gate.position.x, gate.position.z) + 0.075, gate.position.z);
-    strip.rotation.y = -Math.atan2(sideZ, sideX);
-    group.add(strip);
+    // The original used a warm CheckpointLight plus a light for each flame.
+    // One light per arch keeps that color without dozens of dynamic lights.
+    const light = new THREE.PointLight('#ff5525', 3, 9, 2);
+    light.position.set(gate.position.x, roadHeight + 2.5, gate.position.z);
+    lights.push(light);
+    group.add(light);
   }
-
-  const activeLight = new THREE.PointLight('#ffad70', 12, 14, 2);
-  group.add(activeLight);
 
   return {
     group,
     setActive(index: number): void {
-      materials.forEach((material, gateIndex) => {
-        const active = index === gateIndex;
-        material.color.copy(active ? ACTIVE_COLOR : INACTIVE_COLOR);
-        material.emissive.copy(active ? ACTIVE_GLOW : INACTIVE_GLOW);
-        material.emissiveIntensity = active ? 1.65 : 0.45;
+      lights.forEach((light, gateIndex) => {
+        light.intensity = gateIndex === index ? 7 : 3;
       });
-      const gate = gates[index];
-      if (gate) activeLight.position.set(
-        gate.position.x,
-        terrain.sampleHeight(gate.position.x, gate.position.z) + 2.6,
-        gate.position.z,
-      );
     },
   };
 }

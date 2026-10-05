@@ -3,8 +3,10 @@ import type { CheckpointGate } from '../race/checkpointGates';
 import type { Terrain } from '../world/terrain/generateWorld';
 import type { Track } from '../world/track/track';
 
-const ACTIVE_COLOR = new THREE.Color('#ffbe72');
-const INACTIVE_COLOR = new THREE.Color('#8dc5bc');
+const ACTIVE_COLOR = new THREE.Color('#ffc487');
+const ACTIVE_GLOW = new THREE.Color('#da6f38');
+const INACTIVE_COLOR = new THREE.Color('#729f9b');
+const INACTIVE_GLOW = new THREE.Color('#2d6b71');
 
 export interface CheckpointVisuals {
   readonly group: THREE.Group;
@@ -26,8 +28,8 @@ export function createCheckpointVisuals(gates: readonly CheckpointGate[], terrai
   for (const gate of gates) {
     const material = new THREE.MeshStandardMaterial({
       color: INACTIVE_COLOR,
-      emissive: INACTIVE_COLOR,
-      emissiveIntensity: 1.2,
+      emissive: INACTIVE_GLOW,
+      emissiveIntensity: 0.45,
       roughness: 0.35,
       metalness: 0.4,
     });
@@ -68,16 +70,24 @@ export function createCheckpointVisuals(gates: readonly CheckpointGate[], terrai
     group.add(strip);
   }
 
+  const activeLight = new THREE.PointLight('#ffad70', 12, 14, 2);
+  group.add(activeLight);
+
   return {
     group,
     setActive(index: number): void {
       materials.forEach((material, gateIndex) => {
         const active = index === gateIndex;
-        const nextColor = active ? ACTIVE_COLOR : INACTIVE_COLOR;
-        material.color.copy(nextColor);
-        material.emissive.copy(nextColor);
-        material.emissiveIntensity = active ? 2.5 : 0.55;
+        material.color.copy(active ? ACTIVE_COLOR : INACTIVE_COLOR);
+        material.emissive.copy(active ? ACTIVE_GLOW : INACTIVE_GLOW);
+        material.emissiveIntensity = active ? 1.65 : 0.45;
       });
+      const gate = gates[index];
+      if (gate) activeLight.position.set(
+        gate.position.x,
+        terrain.sampleHeight(gate.position.x, gate.position.z) + 2.6,
+        gate.position.z,
+      );
     },
   };
 }

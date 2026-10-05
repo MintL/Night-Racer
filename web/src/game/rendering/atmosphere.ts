@@ -18,6 +18,8 @@ export function createAtmosphere(scene: THREE.Scene, shadows: boolean): Atmosphe
     ]);
   purpleSky.colorSpace = THREE.SRGBColorSpace;
   scene.background = purpleSky;
+  scene.environment = purpleSky;
+  scene.environmentIntensity = 0.45;
   scene.fog = new THREE.FogExp2('#170d22', 0.0042);
 
   // The XNA game used dim ambient and violet directional light. Small fill

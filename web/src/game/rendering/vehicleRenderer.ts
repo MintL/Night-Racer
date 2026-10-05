@@ -88,6 +88,12 @@ export class VehicleRenderer {
     const glow = new THREE.PointLight('#ffe4bc', 2, 7, 2);
     glow.position.set(0, 0.35, -0.95);
     this.group.add(glow);
+
+    // The original car shader mixed violet directional and nearby point lights.
+    // A soft local fill keeps the Porsche body readable against PurpleSky.
+    const bodyFill = new THREE.PointLight('#b9a5e3', 4, 4, 2);
+    bodyFill.position.set(0, 1.5, 1.2);
+    this.group.add(bodyFill);
   }
 
   private loadOriginalCar(): void {

@@ -9,7 +9,7 @@ import { RaceAudioController } from '../game/audio/raceAudio';
 import { createAtmosphere } from '../game/rendering/atmosphere';
 import { createCheckpointVisuals, createRoadsideReflectors, type CheckpointVisuals } from '../game/rendering/checkpointRenderer';
 import { DustTrail } from '../game/rendering/particles/DustTrail';
-import { createRoadMesh, createTerrainMesh } from '../game/rendering/terrainRenderer';
+import { createTerrainMesh } from '../game/rendering/terrainRenderer';
 import { VehicleRenderer } from '../game/rendering/vehicleRenderer';
 import { createWeatherEffects, type WeatherEffects } from '../game/rendering/weatherEffects';
 import { RaceUI, type GraphicsQuality } from '../game/ui/RaceUI';
@@ -147,7 +147,6 @@ export class RallyGame {
     const group = new THREE.Group();
     const gridStep = this.quality === 'low' ? 2 : 1;
     group.add(createTerrainMesh(world.terrain, gridStep));
-    group.add(createRoadMesh(world.track, world.terrain));
     group.add(createScenery(world, this.quality));
     group.add(createRoadsideReflectors(world.track, world.terrain));
     this.dust = new DustTrail(seed);

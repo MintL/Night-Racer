@@ -1,8 +1,6 @@
 import * as THREE from 'three';
 import type { Terrain } from '../world/terrain/generateWorld';
-import type { Track } from '../world/track/track';
 
-const ROAD_HALF_WIDTH = 7 * 0.75;
 type TerrainTextures = Readonly<Record<'road' | 'grass' | 'rock' | 'snow', THREE.Texture>>;
 let terrainTextures: TerrainTextures | null = null;
 
@@ -30,12 +28,11 @@ function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value));
 }
 
-/** Render the original heightmap at a selectable mesh density. Physics always uses full resolution. */
-export function createTerrainMesh(terrain: Terrain, gridStep = 1): THREE.Mesh {
+/** Build the original heightmap and its painted road as one continuous surface. */
+export function createTerrainGeometry(terrain: Terrain, gridStep = 1): THREE.BufferGeometry {
   if (!Number.isInteger(gridStep) || gridStep < 1 || (terrain.size - 1) % gridStep !== 0) {
     throw new RangeError('Terrain grid step must divide the map edge.');
   }
-  const textures = getTerrainTextures();
   const side = (terrain.size - 1) / gridStep + 1;
   const positions = new Float32Array(side * side * 3);
   const textureCoordinates = new Float32Array(side * side * 2);
@@ -52,10 +49,7 @@ export function createTerrainMesh(terrain: Terrain, gridStep = 1): THREE.Mesh {
       const destination = (row * side + column) * 3;
       const height = terrain.heights[source];
       const roadWeight = terrain.roadWeights[source];
-      // The ribbon interpolates along the spline while the terrain triangulates
-      // a grid. Recess the covered ground slightly to prevent z-fighting and
-      // grass triangles from piercing the road on bends.
-      positions.set([x, height - 0.28 * clamp01(roadWeight * 2), z], destination);
+      positions.set([x, height, z], destination);
       textureCoordinates.set([gridX / 8, gridZ / 8], (row * side + column) * 2);
       // TerrainModel.cs blends these four original textures using normalized
       // height-map values. Keep its weighting curves together here.
@@ -90,7 +84,13 @@ export function createTerrainMesh(terrain: Terrain, gridStep = 1): THREE.Mesh {
   geometry.setAttribute('surfaceWeights', new THREE.BufferAttribute(textureWeights, 4));
   geometry.setIndex(new THREE.BufferAttribute(indices, 1));
   geometry.computeVertexNormals();
+  return geometry;
+}
 
+/** Render the original heightmap at a selectable mesh density. Physics always uses full resolution. */
+export function createTerrainMesh(terrain: Terrain, gridStep = 1): THREE.Mesh {
+  const geometry = createTerrainGeometry(terrain, gridStep);
+  const textures = getTerrainTextures();
   const material = new THREE.MeshStandardMaterial({
     roughness: 0.97,
     metalness: 0,
@@ -124,65 +124,6 @@ export function createTerrainMesh(terrain: Terrain, gridStep = 1): THREE.Mesh {
       `,
     );
   };
-  const mesh = new THREE.Mesh(geometry, material);
-  mesh.receiveShadow = true;
-  return mesh;
-}
-
-/** A continuous textured ribbon makes the route readable at driving speed. */
-export function createRoadMesh(track: Track, terrain: Terrain): THREE.Mesh {
-  const count = track.points.length;
-  const positions = new Float32Array((count + 1) * 2 * 3);
-  const uv = new Float32Array((count + 1) * 2 * 2);
-  const indices = new Uint16Array(count * 6);
-
-  for (let index = 0; index <= count; index += 1) {
-    const point = track.points[index % count];
-    const distance = index === count ? track.length : point.distanceFromStart;
-    for (let sideIndex = 0; sideIndex < 2; sideIndex += 1) {
-      const sign = sideIndex === 0 ? -1 : 1;
-      const x = point.x + point.side.x * ROAD_HALF_WIDTH * sign;
-      const z = point.z + point.side.z * ROAD_HALF_WIDTH * sign;
-      const offset = (index * 2 + sideIndex) * 3;
-      positions.set([x, terrain.sampleHeight(x, z) + 0.05, z], offset);
-      uv.set([sideIndex, distance / 7], (index * 2 + sideIndex) * 2);
-    }
-    if (index < count) {
-      const offset = index * 6;
-      const first = index * 2;
-      indices.set([first, first + 1, first + 2, first + 1, first + 3, first + 2], offset);
-    }
-  }
-
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  geometry.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
-  geometry.setIndex(new THREE.BufferAttribute(indices, 1));
-  geometry.computeVertexNormals();
-
-  const material = new THREE.MeshStandardMaterial({
-    color: '#c4b9a2',
-    roughness: 1,
-    metalness: 0,
-    side: THREE.DoubleSide,
-    normalScale: new THREE.Vector2(0.34, 0.34),
-  });
-  new THREE.TextureLoader().load('/assets/terrain/road.jpg', (texture) => {
-    texture.wrapS = THREE.RepeatWrapping;
-    texture.wrapT = THREE.RepeatWrapping;
-    texture.colorSpace = THREE.SRGBColorSpace;
-    texture.anisotropy = 8;
-    material.map = texture;
-    material.needsUpdate = true;
-  });
-  new THREE.TextureLoader().load('/assets/terrain/road_n.png', (texture) => {
-    texture.wrapS = THREE.RepeatWrapping;
-    texture.wrapT = THREE.RepeatWrapping;
-    texture.anisotropy = 8;
-    material.normalMap = texture;
-    material.needsUpdate = true;
-  });
-
   const mesh = new THREE.Mesh(geometry, material);
   mesh.receiveShadow = true;
   return mesh;

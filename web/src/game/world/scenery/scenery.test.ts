@@ -1,7 +1,7 @@
 import { it, expect } from 'vitest';
 import { generateWorld } from '../terrain/generateWorld';
 import { createScenery, disposeScenery } from './createScenery';
-import { generateSceneryPlacements } from './sceneryPlacement';
+import { generateSceneryPlacements, isProceduralFallbackPlacement } from './sceneryPlacement';
 
 it('builds road-safe deterministic scenery', () => {
   const world = generateWorld(2026);
@@ -11,7 +11,7 @@ it('builds road-safe deterministic scenery', () => {
   expect(placements.every((item) => world.terrain.sampleRoad(item.x, item.z) <= 0.01)).toBe(true);
   const group = createScenery(world, 'medium');
   expect(group.children.length).toBe(5);
-  expect(group.userData.placementCount).toBe(placements.length);
+  expect(group.userData.placementCount).toBe(placements.filter(isProceduralFallbackPlacement).length);
   disposeScenery(group);
   expect(group.children.length).toBe(0);
 });

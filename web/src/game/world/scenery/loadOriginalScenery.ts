@@ -4,19 +4,25 @@ import type { World } from '../terrain/generateWorld';
 import type { SceneryQuality } from './sceneryPlacement';
 import { generateOriginalSceneryPlacements, type OriginalSceneryKind, type OriginalSceneryPlacement } from './originalSceneryPlacement';
 
-const MODEL_URLS: Record<OriginalSceneryKind, string> = {
-  birch: '/assets/scenery/birch_01.glb',
-  rock: '/assets/scenery/stone_01.glb',
-};
+const MODELS: readonly { kind: OriginalSceneryKind; variant: number; url: string }[] = [
+  { kind: 'birch', variant: 0, url: '/assets/scenery/birch_01.glb' },
+  { kind: 'birch', variant: 1, url: '/assets/scenery/birch_02.glb' },
+  { kind: 'birch', variant: 2, url: '/assets/scenery/birch_03.glb' },
+  { kind: 'birch', variant: 3, url: '/assets/scenery/birch_04.glb' },
+  { kind: 'oak', variant: 0, url: '/assets/scenery/oak_tree.glb' },
+  { kind: 'rock', variant: 0, url: '/assets/scenery/stone_01.glb' },
+  { kind: 'rock', variant: 1, url: '/assets/scenery/stone_02.glb' },
+];
 
 function addInstances(
   group: THREE.Group,
   source: THREE.Group,
   placements: readonly OriginalSceneryPlacement[],
   kind: OriginalSceneryKind,
+  variant: number,
   castShadow: boolean,
 ): void {
-  const matching = placements.filter((placement) => placement.kind === kind);
+  const matching = placements.filter((placement) => placement.kind === kind && placement.variant === variant);
   if (matching.length === 0) {
     disposeOriginalScenery(source);
     return;
@@ -28,7 +34,7 @@ function addInstances(
   source.traverse((child) => {
     if (!(child instanceof THREE.Mesh)) return;
     const instances = new THREE.InstancedMesh(child.geometry, child.material, matching.length);
-    instances.name = `Original ${kind}: ${child.name}`;
+    instances.name = `Original ${kind} ${variant + 1}: ${child.name}`;
     instances.castShadow = castShadow;
     instances.receiveShadow = true;
     instances.instanceMatrix.setUsage(THREE.StaticDrawUsage);
@@ -49,17 +55,18 @@ function addInstances(
 /** Load textured legacy foliage after the playable world is already on screen. */
 export async function loadOriginalScenery(world: World, quality: SceneryQuality = 'medium'): Promise<THREE.Group> {
   const loader = new GLTFLoader();
-  const [birch, rock] = await Promise.all([
-    loader.loadAsync(MODEL_URLS.birch),
-    loader.loadAsync(MODEL_URLS.rock),
-  ]);
+  const loaded = await Promise.all(MODELS.map(async (model) => ({
+    ...model,
+    source: (await loader.loadAsync(model.url)).scene,
+  })));
   const placements = generateOriginalSceneryPlacements(world, quality);
   const group = new THREE.Group();
-  group.name = 'Original birches and stones';
+  group.name = 'Original birches, oaks, and stones';
   group.userData.placementCount = placements.length;
   const castShadow = quality !== 'low';
-  addInstances(group, birch.scene, placements, 'birch', castShadow);
-  addInstances(group, rock.scene, placements, 'rock', castShadow);
+  for (const model of loaded) {
+    addInstances(group, model.source, placements, model.kind, model.variant, castShadow);
+  }
   return group;
 }
 

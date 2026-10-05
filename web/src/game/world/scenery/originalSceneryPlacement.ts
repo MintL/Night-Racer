@@ -1,8 +1,13 @@
 import { worldRandom } from '../../../core/random/seededRandom';
 import type { World } from '../terrain/generateWorld';
-import { generateSceneryPlacements, type SceneryPlacement, type SceneryQuality } from './sceneryPlacement';
+import {
+  generateSceneryPlacements,
+  isProceduralFallbackPlacement,
+  type SceneryPlacement,
+  type SceneryQuality,
+} from './sceneryPlacement';
 
-export type OriginalSceneryKind = 'birch' | 'rock';
+export type OriginalSceneryKind = 'birch' | 'oak' | 'rock';
 
 export interface OriginalSceneryPlacement {
   readonly kind: OriginalSceneryKind;
@@ -11,12 +16,19 @@ export interface OriginalSceneryPlacement {
   readonly z: number;
   readonly scale: number;
   readonly yaw: number;
+  readonly variant: number;
 }
 
 const COUNTS: Record<SceneryQuality, Record<OriginalSceneryKind, number>> = {
-  low: { birch: 20, rock: 10 },
-  medium: { birch: 45, rock: 22 },
-  high: { birch: 70, rock: 35 },
+  low: { birch: 20, oak: 14, rock: 10 },
+  medium: { birch: 45, oak: 28, rock: 22 },
+  high: { birch: 70, oak: 44, rock: 35 },
+};
+
+const MODEL_VARIANTS: Record<OriginalSceneryKind, number> = {
+  birch: 4,
+  oak: 1,
+  rock: 2,
 };
 
 const EDGE_MARGIN = 7;
@@ -43,7 +55,7 @@ function isClearOfScenery(
   background: readonly SceneryPlacement[],
   placed: readonly OriginalSceneryPlacement[],
 ): boolean {
-  const minimumDistance = kind === 'birch' ? 4 : 3;
+  const minimumDistance = kind === 'rock' ? 3 : 4;
   for (const item of background) {
     if (Math.abs(x - item.x) >= minimumDistance || Math.abs(z - item.z) >= minimumDistance) continue;
     if (Math.hypot(x - item.x, z - item.z) < minimumDistance) return false;
@@ -63,14 +75,14 @@ export function generateOriginalSceneryPlacements(
   const counts = COUNTS[quality];
   if (!counts) throw new RangeError(`Unknown scenery quality: ${quality}`);
 
-  const background = generateSceneryPlacements(world, quality);
+  const background = generateSceneryPlacements(world, quality).filter(isProceduralFallbackPlacement);
   const random = worldRandom(world.seed, 'scenery:original-models');
   const placed: OriginalSceneryPlacement[] = [];
   const { terrain, track } = world;
   const maximumX = terrain.originX + (terrain.size - 1) * terrain.cellSize;
   const maximumZ = terrain.originZ + (terrain.size - 1) * terrain.cellSize;
 
-  for (const kind of ['birch', 'rock'] as const) {
+  for (const kind of ['birch', 'oak', 'rock'] as const) {
     const count = counts[kind];
     for (let slot = 0; slot < count; slot += 1) {
       for (let attempt = 0; attempt < MAX_ATTEMPTS_PER_PLACEMENT; attempt += 1) {
@@ -78,7 +90,7 @@ export function generateOriginalSceneryPlacements(
         // visible throughout a lap without clustering them at the start.
         const progress = (slot + random.nextFloat()) / count;
         const anchor = track.points[Math.floor(progress * track.points.length) % track.points.length];
-        const distance = (kind === 'birch' ? 15 : 14) + random.nextFloat() * 12;
+        const distance = 11.5 + random.nextFloat() * 13;
         const side = random.nextInt(2) === 0 ? -1 : 1;
         const along = (random.nextFloat() - 0.5) * 6;
         const x = anchor.x + anchor.side.x * side * distance + anchor.heading.x * along;
@@ -90,14 +102,18 @@ export function generateOriginalSceneryPlacements(
         ) continue;
         if (!isOffRoad(world, x, z)) continue;
         const surface = terrain.sampleSurface(x, z);
-        if (surface.normal.y < (kind === 'birch' ? 0.76 : 0.58)) continue;
-        if (kind === 'birch' && surface.height > MAX_TREE_HEIGHT) continue;
+        if (surface.normal.y < (kind === 'rock' ? 0.58 : 0.76)) continue;
+        if (kind !== 'rock' && surface.height > MAX_TREE_HEIGHT) continue;
         if (!isClearOfScenery(x, z, kind, background, placed)) continue;
 
-        // The converted birch is 2.9 m tall. A restrained hero scale makes it
-        // stand out from the background trees while keeping the road readable.
-        const scale = kind === 'birch' ? 1.75 + random.nextFloat() * 0.9 : 0.5 + random.nextFloat() * 0.3;
-        placed.push({ kind, x, y: surface.height, z, scale, yaw: random.nextFloat() * Math.PI * 2 });
+        // GamePlayView.cs gives both tree species a scale of 3–6 and stones
+        // a scale of 0.5–0.75. Keep the original model size differences too.
+        const scale = kind === 'rock' ? 0.5 + random.nextFloat() * 0.25 : 3 + random.nextFloat() * 3;
+        placed.push({
+          kind, x, y: surface.height, z, scale,
+          yaw: random.nextFloat() * Math.PI * 2,
+          variant: random.nextInt(MODEL_VARIANTS[kind]),
+        });
         break;
       }
     }

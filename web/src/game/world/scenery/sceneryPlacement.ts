@@ -15,6 +15,11 @@ export interface SceneryPlacement {
   readonly shapeVariation: number;
 }
 
+/** A small fallback while the legacy models load, kept behind the original forest. */
+export function isProceduralFallbackPlacement(placement: SceneryPlacement): boolean {
+  return placement.shapeVariation < (placement.kind === 'rock' ? 0.06 : 0.025);
+}
+
 const COUNTS: Record<SceneryQuality, Record<SceneryKind, number>> = {
   low: { birch: 260, oak: 200, rock: 120 },
   medium: { birch: 600, oak: 450, rock: 280 },

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { World } from '../terrain/generateWorld';
 import {
   generateSceneryPlacements,
+  isProceduralFallbackPlacement,
   type SceneryPlacement,
   type SceneryQuality,
 } from './sceneryPlacement';
@@ -147,9 +148,9 @@ function addRocks(
   group.add(rocks);
 }
 
-/** Build a deterministic, low-draw-call forest around the generated track. */
+/** Show a sparse seeded fallback until the original trees and stones finish loading. */
 export function createScenery(world: World, quality: SceneryQuality = 'medium'): THREE.Group {
-  const placements = generateSceneryPlacements(world, quality);
+  const placements = generateSceneryPlacements(world, quality).filter(isProceduralFallbackPlacement);
   const birches = placements.filter((placement) => placement.kind === 'birch');
   const oaks = placements.filter((placement) => placement.kind === 'oak');
   const rocks = placements.filter((placement) => placement.kind === 'rock');

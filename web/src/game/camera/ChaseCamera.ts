@@ -11,6 +11,7 @@ export class ChaseCamera {
   private readonly desiredPosition = new THREE.Vector3();
   private readonly desiredLookAt = new THREE.Vector3();
   private readonly lookAt = new THREE.Vector3();
+  private followingYaw = 0;
   private orbit = 0;
   private initialized = false;
 
@@ -24,10 +25,16 @@ export class ChaseCamera {
     const distance = 3.3;
     const height = 0.66;
 
+    if (!this.initialized) this.followingYaw = target.yaw;
+    const yawDifference = Math.atan2(
+      Math.sin(target.yaw - this.followingYaw),
+      Math.cos(target.yaw - this.followingYaw),
+    );
+    this.followingYaw += yawDifference * (1 - Math.exp(-4.68 * frameSeconds));
     this.orbit = this.orbit * Math.exp(-2.2 * frameSeconds) + orbitInput * frameSeconds * 1.9;
     this.orbit = Math.max(-0.85, Math.min(0.85, this.orbit));
 
-    const heading = target.yaw + this.orbit;
+    const heading = this.followingYaw + this.orbit;
     this.desiredPosition.set(
       target.position.x + Math.sin(heading) * distance,
       target.position.y + height,
@@ -44,10 +51,10 @@ export class ChaseCamera {
       this.lookAt.copy(this.desiredLookAt);
       this.initialized = true;
     } else {
-      const positionBlend = 1 - Math.exp(-6 * frameSeconds);
-      const lookBlend = 1 - Math.exp(-8 * frameSeconds);
+      // ThirdPersonCamera.cs follows translation at .98 per 60 Hz tick.
+      const positionBlend = 1 - Math.exp(-235 * frameSeconds);
       this.camera.position.lerp(this.desiredPosition, positionBlend);
-      this.lookAt.lerp(this.desiredLookAt, lookBlend);
+      this.lookAt.lerp(this.desiredLookAt, positionBlend);
     }
 
     this.camera.lookAt(this.lookAt);

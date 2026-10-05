@@ -14,6 +14,7 @@ import { RaceUI, type GraphicsQuality } from '../game/ui/RaceUI';
 import { stepVehicle, vehicleSpeedWorldPerSecond, VEHICLE_STEP_SECONDS } from '../game/vehicle/vehicleController';
 import { createVehicleState, type VehicleState } from '../game/vehicle/vehicleState';
 import { createScenery } from '../game/world/scenery/createScenery';
+import { disposeOriginalScenery, loadOriginalScenery } from '../game/world/scenery/loadOriginalScenery';
 import { generateWorld, type World } from '../game/world/terrain/generateWorld';
 
 type Screen = 'loading' | 'menu' | 'race' | 'pause' | 'results';
@@ -58,6 +59,7 @@ export class RallyGame {
   private readonly root: HTMLDivElement;
   private world: World | null = null;
   private worldGroup: THREE.Group | null = null;
+  private originalScenery: THREE.Group | null = null;
   private checkpointVisuals: CheckpointVisuals | null = null;
   private checkpoints: readonly CheckpointGate[] = [];
   private vehicle: VehicleState | null = null;
@@ -116,6 +118,11 @@ export class RallyGame {
 
   private buildWorld(seed: WorldSeed): void {
     if (this.worldGroup) {
+      if (this.originalScenery) {
+        this.worldGroup.remove(this.originalScenery);
+        disposeOriginalScenery(this.originalScenery);
+        this.originalScenery = null;
+      }
       this.scene.remove(this.worldGroup);
       disposeWorldGroup(this.worldGroup);
     }
@@ -132,6 +139,14 @@ export class RallyGame {
     this.scene.add(group);
     this.world = world;
     this.worldGroup = group;
+    void loadOriginalScenery(world, this.quality).then((detail) => {
+      if (this.worldGroup !== group) {
+        disposeOriginalScenery(detail);
+        return;
+      }
+      group.add(detail);
+      this.originalScenery = detail;
+    }).catch((error: unknown) => console.warn('Original scenery unavailable', error));
     this.seed = seed;
     this.rebuildForQuality = false;
     this.vehicle = startingPose(world);

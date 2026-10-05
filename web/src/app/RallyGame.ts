@@ -15,7 +15,7 @@ import { createWeatherEffects, type WeatherEffects } from '../game/rendering/wea
 import { RaceUI, type GraphicsQuality } from '../game/ui/RaceUI';
 import { stepVehicle, vehicleSpeedWorldPerSecond, VEHICLE_STEP_SECONDS } from '../game/vehicle/vehicleController';
 import { VehiclePhysics } from '../game/vehicle/physics/vehiclePhysics';
-import { createVehicleState, type VehicleState } from '../game/vehicle/vehicleState';
+import { createVehicleState, interpolateVehicleState, type VehicleState } from '../game/vehicle/vehicleState';
 import { createScenery } from '../game/world/scenery/createScenery';
 import { disposeOriginalScenery, loadOriginalScenery } from '../game/world/scenery/loadOriginalScenery';
 import { generateWorld, type World } from '../game/world/terrain/generateWorld';
@@ -334,10 +334,11 @@ export class RallyGame {
 
     if (this.vehicle && this.previousVehicle) {
       const interpolation = this.screen === 'race' ? this.accumulator / VEHICLE_STEP_SECONDS : 1;
-      this.car.update(this.previousVehicle, this.vehicle, interpolation);
-      this.camera.update(this.vehicle, elapsed, this.lastOrbitInput);
-      this.atmosphere.update(this.vehicle.position);
-      this.weather?.update(this.vehicle.position, this.camera.camera.position, timestamp / 1000);
+      const displayVehicle = interpolateVehicleState(this.previousVehicle, this.vehicle, interpolation);
+      this.car.update(displayVehicle);
+      this.camera.update(displayVehicle, elapsed, this.lastOrbitInput);
+      this.atmosphere.update(displayVehicle.position);
+      this.weather?.update(displayVehicle.position, this.camera.camera.position, timestamp / 1000);
       if (this.race && this.screen !== 'menu' && this.screen !== 'loading') {
         this.ui.updateHud({ race: this.race, speedKmh: vehicleSpeedWorldPerSecond(this.vehicle) * 3.6, seed: this.seed });
       }

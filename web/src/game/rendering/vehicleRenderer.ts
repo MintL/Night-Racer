@@ -132,22 +132,13 @@ export class VehicleRenderer {
     });
   }
 
-  update(previous: VehicleState, current: VehicleState, alpha: number): void {
-    const x = THREE.MathUtils.lerp(previous.position.x, current.position.x, alpha);
-    const y = THREE.MathUtils.lerp(previous.position.y, current.position.y, alpha);
-    const z = THREE.MathUtils.lerp(previous.position.z, current.position.z, alpha);
-    const yawDifference = Math.atan2(Math.sin(current.yaw - previous.yaw), Math.cos(current.yaw - previous.yaw));
-    const yaw = previous.yaw + yawDifference * alpha;
-    const pitch = THREE.MathUtils.lerp(previous.pitch, current.pitch, alpha);
-    const roll = THREE.MathUtils.lerp(previous.roll, current.roll, alpha);
-    this.group.position.set(x, y, z);
-    this.group.rotation.set(pitch, yaw, roll, 'YXZ');
+  update(state: VehicleState): void {
+    this.group.position.set(state.position.x, state.position.y, state.position.z);
+    this.group.rotation.set(state.pitch, state.yaw, state.roll, 'YXZ');
 
-    const wheelSpin = THREE.MathUtils.lerp(previous.wheelSpin, current.wheelSpin, alpha);
-    const steering = THREE.MathUtils.lerp(previous.steeringAngle, current.steeringAngle, alpha);
     for (const wheel of this.wheels) {
-      wheel.object.rotation.x = wheel.originalX + wheelSpin;
-      wheel.object.rotation.y = wheel.originalY + (wheel.front ? steering : 0);
+      wheel.object.rotation.x = wheel.originalX + state.wheelSpin;
+      wheel.object.rotation.y = wheel.originalY + (wheel.front ? state.steeringAngle : 0);
     }
   }
 

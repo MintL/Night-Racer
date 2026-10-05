@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { assetUrl } from '../../core/assetUrl';
 import type { CheckpointGate } from '../race/checkpointGates';
 import type { Terrain } from '../world/terrain/generateWorld';
 import type { Track } from '../world/track/track';
@@ -39,8 +40,8 @@ function makeFireBillboard(
 
 export function createCheckpointVisuals(gates: readonly CheckpointGate[], terrain: Terrain): CheckpointVisuals {
   const group = new THREE.Group();
-  const flameTexture = new THREE.TextureLoader().load('/assets/particles/smoke_2.png');
-  const smokeTexture = new THREE.TextureLoader().load('/assets/particles/smoke.png');
+  const flameTexture = new THREE.TextureLoader().load(assetUrl('assets/particles/smoke_2.png'));
+  const smokeTexture = new THREE.TextureLoader().load(assetUrl('assets/particles/smoke.png'));
   const billboardGeometry = new THREE.PlaneGeometry(1, 1);
   const flameMaterials = ['#ff3b1f', '#ff8a24', '#ffd34f'].map((flameColor) =>
     new THREE.MeshBasicMaterial({

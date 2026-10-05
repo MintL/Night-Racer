@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { assetUrl } from '../../core/assetUrl';
 
 export interface Atmosphere {
   update(carPosition: Readonly<{ x: number; y: number; z: number }>): void;
@@ -7,7 +8,7 @@ export interface Atmosphere {
 /** The PurpleSky cubemap and violet directional light come from GamePlayView.cs. */
 export function createAtmosphere(scene: THREE.Scene, shadows: boolean): Atmosphere {
   const purpleSky = new THREE.CubeTextureLoader()
-    .setPath('/assets/skybox/')
+    .setPath(assetUrl('assets/skybox/'))
     .load([
       'skybox_right1.png',
       'skybox_left2.png',

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { assetUrl } from '../../core/assetUrl';
 import type { Terrain } from '../world/terrain/generateWorld';
 
 type TerrainTextures = Readonly<Record<'road' | 'grass' | 'rock' | 'snow', THREE.Texture>>;
@@ -8,7 +9,7 @@ function getTerrainTextures(): TerrainTextures {
   if (terrainTextures) return terrainTextures;
   const loader = new THREE.TextureLoader();
   const load = (filename: string): THREE.Texture => {
-    const texture = loader.load(`/assets/terrain/${filename}`);
+    const texture = loader.load(assetUrl(`assets/terrain/${filename}`));
     texture.wrapS = THREE.RepeatWrapping;
     texture.wrapT = THREE.RepeatWrapping;
     texture.colorSpace = THREE.SRGBColorSpace;

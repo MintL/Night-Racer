@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+import { assetUrl } from '../../core/assetUrl';
 import type { VehicleState } from '../vehicle/vehicleState';
 
 interface WheelMesh {
@@ -98,7 +99,7 @@ export class VehicleRenderer {
 
   private loadOriginalCar(): void {
     const loader = new FBXLoader();
-    loader.load('/assets/car/porsche.FBX', (model) => {
+    loader.load(assetUrl('assets/car/porsche.FBX'), (model) => {
       // The FBX stores 1 unit = 2.54 XNA units. Combined with the game's
       // legacy-to-web factor of .01, the correct scale is .0254.
       model.scale.setScalar(0.0254);

@@ -1,17 +1,18 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { assetUrl } from '../../../core/assetUrl';
 import type { World } from '../terrain/generateWorld';
 import type { SceneryQuality } from './sceneryPlacement';
 import { generateOriginalSceneryPlacements, type OriginalSceneryKind, type OriginalSceneryPlacement } from './originalSceneryPlacement';
 
 const MODELS: readonly { kind: OriginalSceneryKind; variant: number; url: string }[] = [
-  { kind: 'birch', variant: 0, url: '/assets/scenery/birch_01.glb' },
-  { kind: 'birch', variant: 1, url: '/assets/scenery/birch_02.glb' },
-  { kind: 'birch', variant: 2, url: '/assets/scenery/birch_03.glb' },
-  { kind: 'birch', variant: 3, url: '/assets/scenery/birch_04.glb' },
-  { kind: 'oak', variant: 0, url: '/assets/scenery/oak_tree.glb' },
-  { kind: 'rock', variant: 0, url: '/assets/scenery/stone_01.glb' },
-  { kind: 'rock', variant: 1, url: '/assets/scenery/stone_02.glb' },
+  { kind: 'birch', variant: 0, url: assetUrl('assets/scenery/birch_01.glb') },
+  { kind: 'birch', variant: 1, url: assetUrl('assets/scenery/birch_02.glb') },
+  { kind: 'birch', variant: 2, url: assetUrl('assets/scenery/birch_03.glb') },
+  { kind: 'birch', variant: 3, url: assetUrl('assets/scenery/birch_04.glb') },
+  { kind: 'oak', variant: 0, url: assetUrl('assets/scenery/oak_tree.glb') },
+  { kind: 'rock', variant: 0, url: assetUrl('assets/scenery/stone_01.glb') },
+  { kind: 'rock', variant: 1, url: assetUrl('assets/scenery/stone_02.glb') },
 ];
 
 function addInstances(

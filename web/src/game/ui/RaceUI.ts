@@ -1,6 +1,7 @@
 import type { RaceState } from '../race/raceState';
 import { raceElapsedSeconds } from '../race/raceState';
 import type { WorldSeed } from '../../core/random/seededRandom';
+import { assetUrl } from '../../core/assetUrl';
 import { LEGACY_WORLD_SCALE, ORIGINAL_HANDLING, VEHICLE_STEP_SECONDS } from '../vehicle/vehicleController';
 
 export type GraphicsQuality = 'low' | 'medium' | 'high';
@@ -70,8 +71,8 @@ export class RaceUI {
         </div>
         <div class="hud-bottom">
           <div class="speedometer" aria-label="Speed in kilometres per hour">
-            <img class="speedometer-face" src="/assets/hud/speedometer2.png" alt="" />
-            <img class="speedometer-needle" id="speedometer-needle" src="/assets/hud/speedometer-needle.png" alt="" />
+            <img class="speedometer-face" src="${assetUrl('assets/hud/speedometer2.png')}" alt="" />
+            <img class="speedometer-needle" id="speedometer-needle" src="${assetUrl('assets/hud/speedometer-needle.png')}" alt="" />
             <strong id="speed-value">000</strong>
           </div>
           <div class="track-readout"><span class="eyebrow">Next checkpoint</span><strong id="gate-value">01 / 06</strong><span id="seed-value"></span></div>
@@ -217,7 +218,7 @@ export class RaceUI {
     this.panel.hidden = false;
     this.panel.innerHTML = `
       <main class="menu-screen">
-        <img class="legacy-logo" src="/assets/menu/menu-title.png" alt="Night Racer" />
+        <img class="legacy-logo" src="${assetUrl('assets/menu/menu-title.png')}" alt="Night Racer" />
         <div class="menu-carousel">
           <section class="menu-content menu-panel-main" data-menu-panel="main" aria-label="Main Menu">
             <h1>Main Menu</h1>
@@ -246,17 +247,17 @@ export class RaceUI {
               <div class="legacy-option-row" data-option-row="graphics">
                 <span>Graphics</span>
                 <div class="legacy-option-value">
-                  <button class="option-arrow" data-action="quality-prev" aria-label="Previous graphics quality"><img src="/assets/menu/menu-left-arrow.png" alt="" /></button>
+                  <button class="option-arrow" data-action="quality-prev" aria-label="Previous graphics quality"><img src="${assetUrl('assets/menu/menu-left-arrow.png')}" alt="" /></button>
                   <output id="graphics-quality-value">${this.quality[0].toUpperCase() + this.quality.slice(1)}</output>
-                  <button class="option-arrow" data-action="quality-next" aria-label="Next graphics quality"><img src="/assets/menu/menu-right-arrow.png" alt="" /></button>
+                  <button class="option-arrow" data-action="quality-next" aria-label="Next graphics quality"><img src="${assetUrl('assets/menu/menu-right-arrow.png')}" alt="" /></button>
                 </div>
               </div>
               <div class="legacy-option-row" data-option-row="rain">
                 <span>Rain</span>
                 <div class="legacy-option-value">
-                  <button class="option-arrow" data-action="rain-prev" aria-label="Turn rain off"><img src="/assets/menu/menu-left-arrow.png" alt="" /></button>
+                  <button class="option-arrow" data-action="rain-prev" aria-label="Turn rain off"><img src="${assetUrl('assets/menu/menu-left-arrow.png')}" alt="" /></button>
                   <output id="rain-enabled-value">${this.rain ? 'On' : 'Off'}</output>
-                  <button class="option-arrow" data-action="rain-next" aria-label="Turn rain on"><img src="/assets/menu/menu-right-arrow.png" alt="" /></button>
+                  <button class="option-arrow" data-action="rain-next" aria-label="Turn rain on"><img src="${assetUrl('assets/menu/menu-right-arrow.png')}" alt="" /></button>
                 </div>
               </div>
               <label class="legacy-option-row" for="master-volume">

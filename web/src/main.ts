@@ -1,4 +1,5 @@
 import './style.css';
+import { RallyGame } from './app/RallyGame';
 
 const app = document.querySelector<HTMLDivElement>('#app');
 
@@ -6,4 +7,4 @@ if (!app) {
   throw new Error('App root was not found');
 }
 
-app.innerHTML = '<main class="startup">Preparing the rally course…</main>';
+new RallyGame(app);

@@ -4,6 +4,7 @@ import type { WorldSeed } from '../../core/random/seededRandom';
 import { LEGACY_WORLD_SCALE, ORIGINAL_HANDLING, VEHICLE_STEP_SECONDS } from '../vehicle/vehicleController';
 
 export type GraphicsQuality = 'low' | 'medium' | 'high';
+type MenuPage = 'main' | 'setup' | 'options';
 
 export interface RaceUICallbacks {
   start(seed: WorldSeed): void;
@@ -54,6 +55,7 @@ export class RaceUI {
   private volume = 0.55;
   private rain = false;
   private currentSeed: WorldSeed = '2013';
+  private menuPage: MenuPage = 'main';
   private noticeUntil = 0;
 
   constructor(root: HTMLDivElement, callbacks: RaceUICallbacks) {
@@ -87,12 +89,16 @@ export class RaceUI {
     root.addEventListener('click', this.onClick);
     root.addEventListener('change', this.onChange);
     root.addEventListener('input', this.onInput);
+    root.addEventListener('keydown', this.onKeyDown);
   }
 
   private readonly onClick = (event: MouseEvent): void => {
     const button = (event.target as Element).closest<HTMLButtonElement>('button[data-action]');
     if (!button) return;
     switch (button.dataset.action) {
+      case 'setup': this.setMenuPage('setup'); break;
+      case 'options': this.setMenuPage('options'); break;
+      case 'back': this.setMenuPage('main'); break;
       case 'play': {
         const input = this.panel.querySelector<HTMLInputElement>('#world-seed');
         const seed = input?.value.trim() || randomSeed();
@@ -130,6 +136,43 @@ export class RaceUI {
     this.callbacks.volumeChanged(this.volume);
   };
 
+  private readonly onKeyDown = (event: KeyboardEvent): void => {
+    const menu = this.panel.querySelector('.menu-screen');
+    if (!menu) return;
+    if (event.key === 'Escape' && this.menuPage !== 'main') {
+      event.preventDefault();
+      event.stopPropagation();
+      this.setMenuPage('main');
+      return;
+    }
+    if (this.menuPage !== 'main' || !['ArrowUp', 'ArrowDown'].includes(event.key)) return;
+    const buttons = [...menu.querySelectorAll<HTMLButtonElement>('[data-menu-panel="main"] button')];
+    const currentIndex = buttons.indexOf(document.activeElement as HTMLButtonElement);
+    const movement = event.key === 'ArrowDown' ? 1 : -1;
+    const nextIndex = (currentIndex + movement + buttons.length) % buttons.length;
+    event.preventDefault();
+    event.stopPropagation();
+    buttons[nextIndex]?.focus();
+  };
+
+  private setMenuPage(page: MenuPage): void {
+    const menu = this.panel.querySelector('.menu-screen');
+    if (!menu) return;
+    this.menuPage = page;
+    for (const menuPanel of menu.querySelectorAll<HTMLElement>('[data-menu-panel]')) {
+      const name = menuPanel.dataset.menuPanel;
+      const status = name === page ? 'active' : name === 'main' ? 'previous' : 'future';
+      menuPanel.dataset.panelStatus = status;
+      menuPanel.inert = status !== 'active';
+      menuPanel.setAttribute('aria-hidden', String(status !== 'active'));
+    }
+    const activePanel = menu.querySelector<HTMLElement>('[data-panel-status="active"]');
+    const firstControl = page === 'setup' ? '#world-seed'
+      : page === 'options' ? '#graphics-quality'
+        : 'button[data-action="setup"]';
+    activePanel?.querySelector<HTMLElement>(firstControl)?.focus();
+  }
+
   showMenu(seed: WorldSeed = this.currentSeed): void {
     this.currentSeed = seed;
     this.hud.hidden = true;
@@ -139,17 +182,27 @@ export class RaceUI {
     this.panel.innerHTML = `
       <main class="menu-screen">
         <img class="legacy-logo" src="/assets/menu/menu-title.png" alt="Night Racer" />
-        <div class="menu-content">
-          <h1>Main Menu</h1>
-          <p class="menu-description">Three laps through a generated night rally course.</p>
-          <label class="seed-label" for="world-seed">Course seed</label>
-          <div class="seed-control">
-            <input id="world-seed" type="text" maxlength="48" value="${escapeHtml(String(seed))}" autocomplete="off" spellcheck="false" />
-            <button class="icon-button" data-action="random" title="Random seed" aria-label="Random seed">↻</button>
-          </div>
-          <button class="primary-button" data-action="play">START RACE <span>›</span></button>
-          <details class="settings">
-            <summary>Options & controls</summary>
+        <div class="menu-carousel">
+          <section class="menu-content menu-panel-main" data-menu-panel="main" aria-label="Main Menu">
+            <h1>Main Menu</h1>
+            <div class="menu-actions">
+              <button class="primary-button" data-action="setup">PLAY <img class="menu-arrow" src="/assets/menu/menu-right-arrow.png" alt="" /></button>
+              <button class="secondary-button" data-action="options">OPTIONS <img class="menu-arrow" src="/assets/menu/menu-right-arrow.png" alt="" /></button>
+            </div>
+          </section>
+          <section class="menu-content menu-panel-setup" data-menu-panel="setup" aria-label="Race Setup">
+            <h2>Race Setup</h2>
+            <p class="menu-description">Three laps through a generated night rally course.</p>
+            <label class="seed-label" for="world-seed">Course seed</label>
+            <div class="seed-control">
+              <input id="world-seed" type="text" maxlength="48" value="${escapeHtml(String(seed))}" autocomplete="off" spellcheck="false" />
+              <button class="icon-button" data-action="random" title="Random seed" aria-label="Random seed">↻</button>
+            </div>
+            <button class="primary-button" data-action="play">START RACE <img class="menu-arrow" src="/assets/menu/menu-right-arrow.png" alt="" /></button>
+            <button class="text-button back-button" data-action="back"><img src="/assets/menu/menu-left-arrow.png" alt="" /> BACK</button>
+          </section>
+          <section class="menu-content menu-panel-options" data-menu-panel="options" aria-label="Options">
+            <h2>Options</h2>
             <div class="settings-grid">
               <label>Graphics <select id="graphics-quality">
                 <option value="low" ${this.quality === 'low' ? 'selected' : ''}>Low</option>
@@ -159,12 +212,15 @@ export class RaceUI {
               <label>Volume <input id="master-volume" type="range" min="0" max="100" value="${Math.round(this.volume * 100)}" /></label>
               <label>Rain <input id="rain-enabled" type="checkbox" ${this.rain ? 'checked' : ''} /></label>
             </div>
-            <button class="text-button" data-action="fullscreen">Toggle fullscreen</button>
-          </details>
+            <button class="secondary-button" data-action="fullscreen">FULLSCREEN <img class="menu-arrow" src="/assets/menu/menu-right-arrow.png" alt="" /></button>
+            <div class="controls-list"><span>WASD / ARROWS · DRIVE</span><span>R · RESET</span><span>Q / E · CAMERA</span><span>ESC · PAUSE</span><span>GAMEPAD SUPPORTED</span></div>
+            <button class="text-button back-button" data-action="back"><img src="/assets/menu/menu-left-arrow.png" alt="" /> BACK</button>
+          </section>
         </div>
         <div class="menu-aside"><span>WASD / ARROWS · DRIVE</span><span>R · RESET</span><span>Q / E · CAMERA</span><span>ESC · PAUSE</span><span>GAMEPAD SUPPORTED</span></div>
       </main>
     `;
+    this.setMenuPage('main');
   }
 
   showLoading(seed: WorldSeed): void {

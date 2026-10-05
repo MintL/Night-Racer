@@ -36,10 +36,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .menu-screen {
   position: absolute;
   inset: 0;
-  display: flex;
-  align-items: center;
-  overflow-y: auto;
-  padding: 145px clamp(30px, 9vw, 150px) 40px;
+  overflow: hidden;
   background: #09010e url("/assets/menu/background.png") center center / cover no-repeat;
 }
 .legacy-logo {
@@ -51,14 +48,45 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
   transform: translateX(-50%);
   filter: drop-shadow(0 12px 17px rgba(0, 0, 0, .7));
 }
+.menu-carousel {
+  position: absolute;
+  top: clamp(170px, 27vh, 250px);
+  left: clamp(60px, 7vw, 120px);
+  width: min(740px, 80vw);
+  height: min(530px, calc(100vh - 205px));
+  perspective: 1200px;
+  transform-style: preserve-3d;
+}
 .menu-content {
-  position: relative;
-  width: min(100%, 356px);
-  flex: none;
+  position: absolute;
+  top: 45%;
+  left: 28%;
+  width: 356px;
+  min-height: 420px;
   padding: 35px 31px 36px;
   background: #201023 url("/assets/menu/menu-bg.png") center / 100% 100% no-repeat;
   box-shadow: 0 20px 55px rgba(0, 0, 0, .58);
-  animation: reveal .35s both;
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
+  transition: transform .48s cubic-bezier(.2, .72, .2, 1), opacity .35s ease, filter .35s ease;
+}
+.menu-content[data-panel-status="active"] {
+  z-index: 2;
+  opacity: 1;
+  filter: brightness(1);
+  transform: translate3d(0, -50%, 0) rotateY(0deg);
+}
+.menu-content[data-panel-status="previous"] {
+  z-index: 1;
+  opacity: .58;
+  filter: brightness(.62);
+  transform: translate3d(-250px, -50%, -150px) rotateY(-65deg);
+}
+.menu-content[data-panel-status="future"] {
+  z-index: 0;
+  opacity: 0;
+  filter: brightness(.6);
+  transform: translate3d(240px, -50%, -160px) rotateY(65deg);
 }
 .menu-content::before, .menu-content::after {
   content: "";
@@ -77,13 +105,14 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
   right: -18px;
   background-image: url("/assets/menu/menu-right-border.png");
 }
-.menu-content h1 {
+.menu-content h1, .menu-content h2 {
   margin: 0 0 19px;
   color: #fff;
   font-size: 28px;
   line-height: 1;
   font-weight: 700;
 }
+.menu-panel-main .menu-actions { display: grid; gap: 14px; margin-top: 70px; }
 .menu-description {
   max-width: 270px;
   margin: 0 0 25px;
@@ -91,7 +120,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
   font-size: 13px;
   line-height: 1.45;
 }
-.seed-label, .eyebrow, .settings summary, .menu-aside, .text-button {
+.seed-label, .eyebrow, .menu-aside, .text-button, .controls-list {
   font-size: 11px;
   font-weight: 700;
   letter-spacing: .09em;
@@ -146,11 +175,12 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
   filter: brightness(1.35);
   transform: translateX(3px);
 }
+.menu-content .primary-button:focus-visible,
+.menu-content .secondary-button:focus-visible { color: #ff6565; }
+.menu-arrow { display: block; width: 21px; height: 21px; image-rendering: auto; }
 .primary-button span { color: #d67bec; font-size: 28px; line-height: 1; }
 .secondary-button { min-height: 52px; }
-.settings { margin-top: 23px; }
-.settings summary { color: #f5d5fa; cursor: pointer; }
-.settings summary:hover, .text-button:hover { color: #ed83fc; }
+.text-button:hover { color: #ed83fc; }
 .settings-grid { display: grid; gap: 14px; margin: 18px 0 12px; }
 .settings-grid label {
   display: flex;
@@ -168,12 +198,22 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 }
 .settings-grid input { accent-color: #b92be5; }
 .text-button { padding: 8px 0; border: 0; color: #ecd0f4; background: none; text-align: left; }
+.back-button { display: flex; align-items: center; gap: 8px; margin-top: 21px; }
+.back-button img { width: 21px; height: 21px; }
+.controls-list {
+  display: grid;
+  gap: 6px;
+  margin-top: 18px;
+  color: #d5b6dd;
+  font-size: 9px;
+}
 .menu-aside {
-  align-self: flex-end;
+  position: absolute;
+  right: clamp(30px, 9vw, 150px);
+  bottom: 40px;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  margin-left: auto;
   color: #e6cce8;
   text-align: right;
   text-shadow: 0 2px 5px #000;
@@ -281,24 +321,27 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .lap-list li { display: flex; justify-content: space-between; padding: 9px 0; border-top: 1px solid #af81bb; }
 .lap-list strong { font-variant-numeric: tabular-nums; }
 
-@keyframes reveal {
-  from { opacity: 0; transform: translateY(9px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
 @media (max-width: 700px) {
-  .menu-screen { display: block; padding: 145px 30px 30px; }
   .legacy-logo { top: 25px; width: min(330px, 72vw); }
-  .menu-content { margin: 0 auto; }
+  .menu-carousel { top: 125px; left: 0; width: 100%; height: calc(100vh - 125px); perspective: 800px; }
+  .menu-content { top: 48%; left: 50%; width: min(84vw, 356px); }
+  .menu-content[data-panel-status="active"] { transform: translate3d(-50%, -50%, 0) rotateY(0deg); }
+  .menu-content[data-panel-status="previous"] { transform: translate3d(calc(-50% - 210px), -50%, -130px) rotateY(-65deg); }
+  .menu-content[data-panel-status="future"] { transform: translate3d(calc(-50% + 210px), -50%, -130px) rotateY(65deg); }
   .menu-aside { display: none; }
   .speedometer { transform: scale(.8); transform-origin: bottom left; }
   .track-readout { padding-bottom: 14px; }
 }
 
 @media (max-height: 700px) {
-  .menu-screen { align-items: flex-start; padding-top: 115px; }
   .legacy-logo { top: 9px; width: min(290px, 58vw); }
-  .menu-content { padding-top: 24px; padding-bottom: 24px; }
+  .menu-carousel { top: 110px; height: calc(100vh - 110px); }
+  .menu-content { min-height: 0; padding-top: 24px; padding-bottom: 24px; }
+  .menu-panel-main .menu-actions { margin-top: 35px; }
   .menu-description { margin-bottom: 15px; }
-  .settings { margin-top: 15px; }
+  .controls-list { margin-top: 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .menu-content { transition: none; }
 }

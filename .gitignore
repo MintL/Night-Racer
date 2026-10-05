@@ -1,0 +1,12 @@
+# The original XNA repository is retained as a read-only reference.
+/legacy/
+
+# Web tooling output and local configuration.
+/web/node_modules/
+/web/dist/
+/web/coverage/
+/web/.vite/
+.DS_Store
+.env
+.env.*
+!.env.example

@@ -15,13 +15,14 @@ export class ChaseCamera {
   private initialized = false;
 
   constructor(aspect: number) {
-    this.camera = new THREE.PerspectiveCamera(65, aspect, 0.08, 550);
+    // GamePlayView.cs used Pi/4. ThirdPersonCamera.cs used a 330-unit zoom,
+    // offset by (0, .2, 1), looking toward (0, .275, 0).
+    this.camera = new THREE.PerspectiveCamera(45, aspect, 0.08, 550);
   }
 
   update(target: CameraTarget, frameSeconds: number, orbitInput: number): void {
-    const speedFraction = Math.min(1, Math.abs(target.speed) / 50);
-    const distance = 7.2 + 2.6 * speedFraction;
-    const height = 3.3 + 0.8 * speedFraction;
+    const distance = 3.3;
+    const height = 0.66;
 
     this.orbit = this.orbit * Math.exp(-2.2 * frameSeconds) + orbitInput * frameSeconds * 1.9;
     this.orbit = Math.max(-0.85, Math.min(0.85, this.orbit));
@@ -33,9 +34,9 @@ export class ChaseCamera {
       target.position.z + Math.cos(heading) * distance,
     );
     this.desiredLookAt.set(
-      target.position.x - Math.sin(target.yaw) * 2.6,
-      target.position.y + 1.1,
-      target.position.z - Math.cos(target.yaw) * 2.6,
+      target.position.x,
+      target.position.y + 0.9075,
+      target.position.z,
     );
 
     if (!this.initialized) {

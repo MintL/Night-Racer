@@ -8,6 +8,7 @@ import { createRaceState, type RaceState } from '../game/race/raceState';
 import { RaceAudioController } from '../game/audio/raceAudio';
 import { createAtmosphere } from '../game/rendering/atmosphere';
 import { createCheckpointVisuals, createRoadsideReflectors, type CheckpointVisuals } from '../game/rendering/checkpointRenderer';
+import { DustTrail } from '../game/rendering/particles/DustTrail';
 import { createRoadMesh, createTerrainMesh } from '../game/rendering/terrainRenderer';
 import { VehicleRenderer } from '../game/rendering/vehicleRenderer';
 import { RaceUI, type GraphicsQuality } from '../game/ui/RaceUI';
@@ -64,6 +65,7 @@ export class RallyGame {
   private world: World | null = null;
   private worldGroup: THREE.Group | null = null;
   private originalScenery: THREE.Group | null = null;
+  private dust: DustTrail | null = null;
   private physics: VehiclePhysics | null = null;
   private checkpointVisuals: CheckpointVisuals | null = null;
   private checkpoints: readonly CheckpointGate[] = [];
@@ -125,6 +127,8 @@ export class RallyGame {
     this.physics?.dispose();
     this.physics = null;
     if (this.worldGroup) {
+      this.dust?.dispose();
+      this.dust = null;
       if (this.originalScenery) {
         this.worldGroup.remove(this.originalScenery);
         disposeOriginalScenery(this.originalScenery);
@@ -140,6 +144,8 @@ export class RallyGame {
     group.add(createRoadMesh(world.track, world.terrain));
     group.add(createScenery(world, this.quality));
     group.add(createRoadsideReflectors(world.track, world.terrain));
+    this.dust = new DustTrail(seed);
+    group.add(this.dust.group);
     this.checkpoints = createCheckpointGates(world.track.sample);
     this.checkpointVisuals = createCheckpointVisuals(this.checkpoints, world.terrain);
     group.add(this.checkpointVisuals.group);
@@ -196,6 +202,7 @@ export class RallyGame {
     this.vehicle = startingPose(this.world);
     this.previousVehicle = this.vehicle;
     this.physics?.reset(this.vehicle);
+    this.dust?.reset(this.seed);
     this.race = createRaceState(this.checkpoints);
     this.checkpointVisuals?.setActive(0);
     this.camera.snap();
@@ -267,6 +274,7 @@ export class RallyGame {
     }, yaw);
     this.previousVehicle = this.vehicle;
     this.physics?.reset(this.vehicle);
+    this.dust?.reset(this.seed);
     this.camera.snap();
     this.ui.notify('Back on course');
   }
@@ -320,6 +328,11 @@ export class RallyGame {
       sampleRoad: this.world.terrain.sampleRoad,
     });
     const next = this.physics ? this.physics.step(arcadeNext).vehicle : arcadeNext;
+    this.dust?.update(
+      VEHICLE_STEP_SECONDS,
+      next,
+      this.world.terrain.sampleRoad(next.position.x, next.position.z),
+    );
     const previousRace = this.race;
     const race = stepRace(previousRace, previous.position, next.position);
     this.previousVehicle = previous;

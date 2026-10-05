@@ -28,4 +28,6 @@ The remake uses a seeded Mulberry32 generator, so a given seed is stable within 
 
 Rapier terrain contacts and four wheel raycasts add suspension, landing, pitch, and roll while the original arcade formulas still drive horizontal motion. The kinematic car can push dynamic props, but impacts currently do not redirect its horizontal path.
 
+Seeded dust follows the rear wheels and reacts to speed, steering, and road or grass coverage. It changes visuals only.
+
 The Porsche FBX, terrain textures, and audio come from `legacy/`; [asset notes](public/assets/README.md) record the conversions. The original repository does not include a license or asset attribution file, so distribution rights should be checked before publishing the game.

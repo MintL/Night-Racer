@@ -31,7 +31,10 @@ function disposeWorldGroup(group: THREE.Group): void {
   });
   geometries.forEach((geometry) => geometry.dispose());
   materials.forEach((material) => {
-    if (material instanceof THREE.MeshStandardMaterial) material.map?.dispose();
+    if (material instanceof THREE.MeshStandardMaterial) {
+      material.map?.dispose();
+      material.normalMap?.dispose();
+    }
     material.dispose();
   });
 }

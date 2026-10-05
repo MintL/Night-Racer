@@ -121,6 +121,7 @@ export function createRoadMesh(track: Track, terrain: Terrain): THREE.Mesh {
     roughness: 1,
     metalness: 0,
     side: THREE.DoubleSide,
+    normalScale: new THREE.Vector2(0.34, 0.34),
   });
   new THREE.TextureLoader().load('/assets/terrain/road.jpg', (texture) => {
     texture.wrapS = THREE.RepeatWrapping;
@@ -128,6 +129,13 @@ export function createRoadMesh(track: Track, terrain: Terrain): THREE.Mesh {
     texture.colorSpace = THREE.SRGBColorSpace;
     texture.anisotropy = 8;
     material.map = texture;
+    material.needsUpdate = true;
+  });
+  new THREE.TextureLoader().load('/assets/terrain/road_n.png', (texture) => {
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.anisotropy = 8;
+    material.normalMap = texture;
     material.needsUpdate = true;
   });
 

@@ -335,7 +335,7 @@ export class RallyGame {
       const interpolation = this.screen === 'race' ? this.accumulator / VEHICLE_STEP_SECONDS : 1;
       this.car.update(this.previousVehicle, this.vehicle, interpolation);
       this.camera.update(this.vehicle, elapsed, this.lastOrbitInput);
-      this.atmosphere.update(this.vehicle.position, this.camera.camera.position);
+      this.atmosphere.update(this.vehicle.position);
       this.weather?.update(this.vehicle.position, this.camera.camera.position, timestamp / 1000);
       if (this.race && this.screen !== 'menu' && this.screen !== 'loading') {
         this.ui.updateHud({ race: this.race, speedKmh: vehicleSpeedWorldPerSecond(this.vehicle) * 3.6, seed: this.seed });

@@ -32,4 +32,4 @@ Seeded dust follows the rear wheels and reacts to speed, steering, and road or g
 
 The dusk scene includes seeded fireflies, and the menu's Rain setting adds a light visual rain curtain. Weather does not change grip yet.
 
-The Porsche FBX, terrain textures, and audio come from `legacy/`; [asset notes](public/assets/README.md) record the conversions. The original repository does not include a license or asset attribution file, so distribution rights should be checked before publishing the game.
+The terrain blends the original road, grass, rock, and snow textures with the height-based weights from `TerrainModel.cs`. The Porsche FBX, terrain textures, and audio come from `legacy/`; [asset notes](public/assets/README.md) record the conversions. The original repository does not include a license or asset attribution file, so distribution rights should be checked before publishing the game.

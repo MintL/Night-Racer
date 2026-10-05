@@ -87,7 +87,6 @@ export class RaceUI {
     this.countdown = root.querySelector<HTMLDivElement>('.countdown')!;
     this.notice = root.querySelector<HTMLDivElement>('.race-notice')!;
     root.addEventListener('click', this.onClick);
-    root.addEventListener('change', this.onChange);
     root.addEventListener('input', this.onInput);
     root.addEventListener('keydown', this.onKeyDown);
   }
@@ -95,10 +94,16 @@ export class RaceUI {
   private readonly onClick = (event: MouseEvent): void => {
     const button = (event.target as Element).closest<HTMLButtonElement>('button[data-action]');
     if (!button) return;
+    const menuPanel = button.closest<HTMLElement>('[data-menu-panel]');
+    if (menuPanel && menuPanel.dataset.panelStatus !== 'active') return;
     switch (button.dataset.action) {
       case 'setup': this.setMenuPage('setup'); break;
       case 'options': this.setMenuPage('options'); break;
       case 'back': this.setMenuPage('main'); break;
+      case 'quality-prev': this.changeQuality(-1); break;
+      case 'quality-next': this.changeQuality(1); break;
+      case 'rain-prev': this.changeRain(-1); break;
+      case 'rain-next': this.changeRain(1); break;
       case 'play': {
         const input = this.panel.querySelector<HTMLInputElement>('#world-seed');
         const seed = input?.value.trim() || randomSeed();
@@ -118,17 +123,6 @@ export class RaceUI {
     }
   };
 
-  private readonly onChange = (event: Event): void => {
-    const target = event.target;
-    if (target instanceof HTMLSelectElement && target.id === 'graphics-quality') {
-      this.quality = target.value as GraphicsQuality;
-      this.callbacks.qualityChanged(this.quality);
-    } else if (target instanceof HTMLInputElement && target.id === 'rain-enabled') {
-      this.rain = target.checked;
-      this.callbacks.rainChanged(this.rain);
-    }
-  };
-
   private readonly onInput = (event: Event): void => {
     const target = event.target;
     if (!(target instanceof HTMLInputElement) || target.id !== 'master-volume') return;
@@ -145,15 +139,57 @@ export class RaceUI {
       this.setMenuPage('main');
       return;
     }
-    if (this.menuPage !== 'main' || !['ArrowUp', 'ArrowDown'].includes(event.key)) return;
-    const buttons = [...menu.querySelectorAll<HTMLButtonElement>('[data-menu-panel="main"] button')];
-    const currentIndex = buttons.indexOf(document.activeElement as HTMLButtonElement);
+    if (this.menuPage === 'options' && ['ArrowLeft', 'ArrowRight'].includes(event.key)) {
+      const option = (event.target as Element).closest<HTMLElement>('[data-option-row]')?.dataset.optionRow;
+      const direction = event.key === 'ArrowRight' ? 1 : -1;
+      if (option === 'graphics') this.changeQuality(direction);
+      else if (option === 'rain') this.changeRain(direction);
+      else return;
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+    if (!['ArrowUp', 'ArrowDown'].includes(event.key)) return;
+    const activePanel = menu.querySelector<HTMLElement>('[data-panel-status="active"]');
+    if (!activePanel) return;
+    const controls = this.menuPage === 'options'
+      ? [
+          activePanel.querySelector<HTMLElement>('[data-action="quality-prev"]'),
+          activePanel.querySelector<HTMLElement>('[data-action="rain-prev"]'),
+          activePanel.querySelector<HTMLElement>('#master-volume'),
+          activePanel.querySelector<HTMLElement>('[data-action="fullscreen"]'),
+          activePanel.querySelector<HTMLElement>('[data-action="back"]'),
+        ].filter((control): control is HTMLElement => control !== null)
+      : [...activePanel.querySelectorAll<HTMLElement>('input, button')];
+    const target = event.target as HTMLElement;
+    const currentIndex = controls.findIndex((control) =>
+      control === target || control.closest('[data-option-row]')?.contains(target));
     const movement = event.key === 'ArrowDown' ? 1 : -1;
-    const nextIndex = (currentIndex + movement + buttons.length) % buttons.length;
+    const nextIndex = Math.max(0, Math.min(controls.length - 1, currentIndex + movement));
     event.preventDefault();
     event.stopPropagation();
-    buttons[nextIndex]?.focus();
+    controls[nextIndex]?.focus({ preventScroll: true });
   };
+
+  private changeQuality(direction: -1 | 1): void {
+    const qualities: GraphicsQuality[] = ['low', 'medium', 'high'];
+    const index = Math.max(0, Math.min(qualities.length - 1, qualities.indexOf(this.quality) + direction));
+    const next = qualities[index];
+    if (next === this.quality) return;
+    this.quality = next;
+    const value = this.panel.querySelector<HTMLOutputElement>('#graphics-quality-value');
+    if (value) value.textContent = next[0].toUpperCase() + next.slice(1);
+    this.callbacks.qualityChanged(next);
+  }
+
+  private changeRain(direction: -1 | 1): void {
+    const next = direction > 0;
+    if (next === this.rain) return;
+    this.rain = next;
+    const value = this.panel.querySelector<HTMLOutputElement>('#rain-enabled-value');
+    if (value) value.textContent = next ? 'On' : 'Off';
+    this.callbacks.rainChanged(next);
+  }
 
   private setMenuPage(page: MenuPage): void {
     const menu = this.panel.querySelector('.menu-screen');
@@ -168,9 +204,9 @@ export class RaceUI {
     }
     const activePanel = menu.querySelector<HTMLElement>('[data-panel-status="active"]');
     const firstControl = page === 'setup' ? '#world-seed'
-      : page === 'options' ? '#graphics-quality'
+      : page === 'options' ? 'button[data-action="quality-prev"]'
         : 'button[data-action="setup"]';
-    activePanel?.querySelector<HTMLElement>(firstControl)?.focus();
+    activePanel?.querySelector<HTMLElement>(firstControl)?.focus({ preventScroll: true });
   }
 
   showMenu(seed: WorldSeed = this.currentSeed): void {
@@ -186,38 +222,54 @@ export class RaceUI {
           <section class="menu-content menu-panel-main" data-menu-panel="main" aria-label="Main Menu">
             <h1>Main Menu</h1>
             <div class="menu-actions">
-              <button class="primary-button" data-action="setup">PLAY <img class="menu-arrow" src="/assets/menu/menu-right-arrow.png" alt="" /></button>
-              <button class="secondary-button" data-action="options">OPTIONS <img class="menu-arrow" src="/assets/menu/menu-right-arrow.png" alt="" /></button>
+              <button class="primary-button" data-action="setup">Play</button>
+              <button class="secondary-button" data-action="options">Options</button>
             </div>
           </section>
           <section class="menu-content menu-panel-setup" data-menu-panel="setup" aria-label="Race Setup">
             <h2>Race Setup</h2>
-            <p class="menu-description">Three laps through a generated night rally course.</p>
-            <label class="seed-label" for="world-seed">Course seed</label>
-            <div class="seed-control">
-              <input id="world-seed" type="text" maxlength="48" value="${escapeHtml(String(seed))}" autocomplete="off" spellcheck="false" />
-              <button class="icon-button" data-action="random" title="Random seed" aria-label="Random seed">↻</button>
+            <div class="menu-setup-body">
+              <div class="legacy-option-row seed-row">
+                <label for="world-seed">Course Seed</label>
+                <input id="world-seed" type="text" maxlength="48" value="${escapeHtml(String(seed))}" autocomplete="off" spellcheck="false" />
+              </div>
+              <button class="secondary-button" data-action="random">Random Seed</button>
             </div>
-            <button class="primary-button" data-action="play">START RACE <img class="menu-arrow" src="/assets/menu/menu-right-arrow.png" alt="" /></button>
-            <button class="text-button back-button" data-action="back"><img src="/assets/menu/menu-left-arrow.png" alt="" /> BACK</button>
+            <div class="menu-actions menu-bottom-actions">
+              <button class="primary-button" data-action="play">Start Race</button>
+              <button class="secondary-button" data-action="back">Back</button>
+            </div>
           </section>
           <section class="menu-content menu-panel-options" data-menu-panel="options" aria-label="Options">
             <h2>Options</h2>
-            <div class="settings-grid">
-              <label>Graphics <select id="graphics-quality">
-                <option value="low" ${this.quality === 'low' ? 'selected' : ''}>Low</option>
-                <option value="medium" ${this.quality === 'medium' ? 'selected' : ''}>Medium</option>
-                <option value="high" ${this.quality === 'high' ? 'selected' : ''}>High</option>
-              </select></label>
-              <label>Volume <input id="master-volume" type="range" min="0" max="100" value="${Math.round(this.volume * 100)}" /></label>
-              <label>Rain <input id="rain-enabled" type="checkbox" ${this.rain ? 'checked' : ''} /></label>
+            <div class="legacy-option-list">
+              <div class="legacy-option-row" data-option-row="graphics">
+                <span>Graphics</span>
+                <div class="legacy-option-value">
+                  <button class="option-arrow" data-action="quality-prev" aria-label="Previous graphics quality"><img src="/assets/menu/menu-left-arrow.png" alt="" /></button>
+                  <output id="graphics-quality-value">${this.quality[0].toUpperCase() + this.quality.slice(1)}</output>
+                  <button class="option-arrow" data-action="quality-next" aria-label="Next graphics quality"><img src="/assets/menu/menu-right-arrow.png" alt="" /></button>
+                </div>
+              </div>
+              <div class="legacy-option-row" data-option-row="rain">
+                <span>Rain</span>
+                <div class="legacy-option-value">
+                  <button class="option-arrow" data-action="rain-prev" aria-label="Turn rain off"><img src="/assets/menu/menu-left-arrow.png" alt="" /></button>
+                  <output id="rain-enabled-value">${this.rain ? 'On' : 'Off'}</output>
+                  <button class="option-arrow" data-action="rain-next" aria-label="Turn rain on"><img src="/assets/menu/menu-right-arrow.png" alt="" /></button>
+                </div>
+              </div>
+              <label class="legacy-option-row" for="master-volume">
+                <span>Volume</span>
+                <input id="master-volume" aria-label="Volume" type="range" min="0" max="100" value="${Math.round(this.volume * 100)}" />
+              </label>
             </div>
-            <button class="secondary-button" data-action="fullscreen">FULLSCREEN <img class="menu-arrow" src="/assets/menu/menu-right-arrow.png" alt="" /></button>
-            <div class="controls-list"><span>WASD / ARROWS · DRIVE</span><span>R · RESET</span><span>Q / E · CAMERA</span><span>ESC · PAUSE</span><span>GAMEPAD SUPPORTED</span></div>
-            <button class="text-button back-button" data-action="back"><img src="/assets/menu/menu-left-arrow.png" alt="" /> BACK</button>
+            <div class="menu-actions menu-bottom-actions">
+              <button class="secondary-button" data-action="fullscreen">Fullscreen</button>
+              <button class="secondary-button" data-action="back">Back</button>
+            </div>
           </section>
         </div>
-        <div class="menu-aside"><span>WASD / ARROWS · DRIVE</span><span>R · RESET</span><span>Q / E · CAMERA</span><span>ESC · PAUSE</span><span>GAMEPAD SUPPORTED</span></div>
       </main>
     `;
     this.setMenuPage('main');
@@ -241,9 +293,9 @@ export class RaceUI {
       <div class="center-screen">
         <span class="overline">Race paused</span><h2>Catch your breath.</h2>
         <div class="button-stack">
-          <button class="primary-button" data-action="resume">RESUME <span>↗</span></button>
-          <button class="secondary-button" data-action="restart">RESTART COURSE</button>
-          <button class="text-button" data-action="menu">MAIN MENU</button>
+          <button class="primary-button" data-action="resume">Resume</button>
+          <button class="secondary-button" data-action="restart">Restart Course</button>
+          <button class="secondary-button" data-action="menu">Main Menu</button>
         </div>
       </div>
     `;
@@ -260,9 +312,9 @@ export class RaceUI {
         <div class="result-time"><span>Total time</span><strong>${formatTime(raceElapsedSeconds(race))}</strong></div>
         <ol class="lap-list">${laps}</ol>
         <div class="button-stack">
-          <button class="primary-button" data-action="restart">RACE AGAIN <span>↗</span></button>
-          <button class="secondary-button" data-action="new-seed">NEW COURSE</button>
-          <button class="text-button" data-action="menu">MAIN MENU</button>
+          <button class="primary-button" data-action="restart">Race Again</button>
+          <button class="secondary-button" data-action="new-seed">New Course</button>
+          <button class="secondary-button" data-action="menu">Main Menu</button>
         </div>
       </div>
     `;

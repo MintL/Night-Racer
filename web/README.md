@@ -30,4 +30,6 @@ Rapier terrain contacts and four wheel raycasts add suspension, landing, pitch, 
 
 Seeded dust follows the rear wheels and reacts to speed, steering, and road or grass coverage. It changes visuals only.
 
+The dusk scene includes seeded fireflies, and the menu's Rain setting adds a light visual rain curtain. Weather does not change grip yet.
+
 The Porsche FBX, terrain textures, and audio come from `legacy/`; [asset notes](public/assets/README.md) record the conversions. The original repository does not include a license or asset attribution file, so distribution rights should be checked before publishing the game.

@@ -10,6 +10,7 @@ export interface RaceUICallbacks {
   restart(): void;
   menu(): void;
   qualityChanged(quality: GraphicsQuality): void;
+  rainChanged(rain: boolean): void;
   volumeChanged(volume: number): void;
   fullscreen(): void;
 }
@@ -46,6 +47,7 @@ export class RaceUI {
   private readonly callbacks: RaceUICallbacks;
   private quality: GraphicsQuality = 'medium';
   private volume = 0.55;
+  private rain = false;
   private currentSeed: WorldSeed = '2013';
   private noticeUntil = 0;
 
@@ -103,9 +105,13 @@ export class RaceUI {
 
   private readonly onChange = (event: Event): void => {
     const target = event.target;
-    if (!(target instanceof HTMLSelectElement) || target.id !== 'graphics-quality') return;
-    this.quality = target.value as GraphicsQuality;
-    this.callbacks.qualityChanged(this.quality);
+    if (target instanceof HTMLSelectElement && target.id === 'graphics-quality') {
+      this.quality = target.value as GraphicsQuality;
+      this.callbacks.qualityChanged(this.quality);
+    } else if (target instanceof HTMLInputElement && target.id === 'rain-enabled') {
+      this.rain = target.checked;
+      this.callbacks.rainChanged(this.rain);
+    }
   };
 
   private readonly onInput = (event: Event): void => {
@@ -143,6 +149,7 @@ export class RaceUI {
                 <option value="high" ${this.quality === 'high' ? 'selected' : ''}>High</option>
               </select></label>
               <label>Volume <input id="master-volume" type="range" min="0" max="100" value="${Math.round(this.volume * 100)}" /></label>
+              <label>Rain <input id="rain-enabled" type="checkbox" ${this.rain ? 'checked' : ''} /></label>
             </div>
             <button class="text-button" data-action="fullscreen">Toggle fullscreen ↗</button>
           </details>

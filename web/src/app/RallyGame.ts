@@ -11,6 +11,7 @@ import { createCheckpointVisuals, createRoadsideReflectors, type CheckpointVisua
 import { DustTrail } from '../game/rendering/particles/DustTrail';
 import { createRoadMesh, createTerrainMesh } from '../game/rendering/terrainRenderer';
 import { VehicleRenderer } from '../game/rendering/vehicleRenderer';
+import { createWeatherEffects, type WeatherEffects } from '../game/rendering/weatherEffects';
 import { RaceUI, type GraphicsQuality } from '../game/ui/RaceUI';
 import { stepVehicle, vehicleSpeedWorldPerSecond, VEHICLE_STEP_SECONDS } from '../game/vehicle/vehicleController';
 import { VehiclePhysics } from '../game/vehicle/physics/vehiclePhysics';
@@ -66,6 +67,7 @@ export class RallyGame {
   private worldGroup: THREE.Group | null = null;
   private originalScenery: THREE.Group | null = null;
   private dust: DustTrail | null = null;
+  private weather: WeatherEffects | null = null;
   private physics: VehiclePhysics | null = null;
   private checkpointVisuals: CheckpointVisuals | null = null;
   private checkpoints: readonly CheckpointGate[] = [];
@@ -74,6 +76,7 @@ export class RallyGame {
   private race: RaceState | null = null;
   private seed: WorldSeed = '2013';
   private quality: GraphicsQuality = 'medium';
+  private rainEnabled = false;
   private screen: Screen = 'loading';
   private accumulator = 0;
   private lastFrameTime = 0;
@@ -89,6 +92,7 @@ export class RallyGame {
       restart: () => this.restart(),
       menu: () => this.menu(),
       qualityChanged: (quality) => this.changeQuality(quality),
+      rainChanged: (rain) => this.changeRain(rain),
       volumeChanged: (volume) => this.audio.setMasterVolume(volume),
       fullscreen: () => this.toggleFullscreen(),
     });
@@ -129,6 +133,8 @@ export class RallyGame {
     if (this.worldGroup) {
       this.dust?.dispose();
       this.dust = null;
+      this.weather?.dispose();
+      this.weather = null;
       if (this.originalScenery) {
         this.worldGroup.remove(this.originalScenery);
         disposeOriginalScenery(this.originalScenery);
@@ -146,6 +152,12 @@ export class RallyGame {
     group.add(createRoadsideReflectors(world.track, world.terrain));
     this.dust = new DustTrail(seed);
     group.add(this.dust.group);
+    this.weather = createWeatherEffects(world, {
+      quality: this.quality,
+      rain: this.rainEnabled,
+      fireflies: true,
+    });
+    group.add(this.weather.group);
     this.checkpoints = createCheckpointGates(world.track.sample);
     this.checkpointVisuals = createCheckpointVisuals(this.checkpoints, world.terrain);
     group.add(this.checkpointVisuals.group);
@@ -247,6 +259,21 @@ export class RallyGame {
     this.resize();
   }
 
+  private changeRain(rain: boolean): void {
+    this.rainEnabled = rain;
+    if (!this.world || !this.worldGroup) return;
+    if (this.weather) {
+      this.worldGroup.remove(this.weather.group);
+      this.weather.dispose();
+    }
+    this.weather = createWeatherEffects(this.world, {
+      quality: this.quality,
+      rain,
+      fireflies: true,
+    });
+    this.worldGroup.add(this.weather.group);
+  }
+
   private toggleFullscreen(): void {
     if (document.fullscreenElement) {
       void document.exitFullscreen();
@@ -309,6 +336,7 @@ export class RallyGame {
       this.car.update(this.previousVehicle, this.vehicle, interpolation);
       this.camera.update(this.vehicle, elapsed, this.lastOrbitInput);
       this.atmosphere.update(this.vehicle.position, this.camera.camera.position);
+      this.weather?.update(this.vehicle.position, this.camera.camera.position, timestamp / 1000);
       if (this.race && this.screen !== 'menu' && this.screen !== 'loading') {
         this.ui.updateHud({ race: this.race, speedKmh: vehicleSpeedWorldPerSecond(this.vehicle) * 3.6, seed: this.seed });
       }
